@@ -5,32 +5,60 @@ A snake that learns how to behave in an environment through trial and error.
 ## Current Architecture Vision
 
 ```mermaid
-graph LR
-    subgraph Input Layer
-        I[State Vector: 12 Features]
-    end
+classDiagram
+    direction TB
 
-    subgraph Hidden Layers
-        H1[Linear Layer 1: 256 Neurons + ReLU]
-        H2[Linear Layer 2: 256 Neurons + ReLU]
-    end
+    class TrainingLoop {
+        <<main_ai.py>>
+        +run_episodes(episodes)
+    }
 
-    subgraph Output Layer
-        O[Q-Values: 4 Outputs]
-    end
+    class DQNAgent {
+        <<PyTorch>>
+        -NeuralNetwork policy_net
+        -ReplayBuffer memory
+        +select_action(state) int
+        +remember(state, action, reward, next_state, done)
+        +train()
+    }
 
-    I -->|12 inputs| H1
-    H1 -->|256 weights| H2
-    H2 -->|256 weights| O
-    
-    O -.-> A1(Action 0: Up)
-    O -.-> A2(Action 1: Down)
-    O -.-> A3(Action 2: Left)
-    O -.-> A4(Action 3: Right)
+    class GymnasiumWrapper {
+        <<gymnasium.Env>>
+        +String render_mode
+        +reset() ndarray
+        +step(action) tuple
+    }
 
-    %% Minimalistic borders for visibility across themes
-    style I stroke:#333,stroke-width:2px
-    style H1 stroke:#333,stroke-width:2px
-    style H2 stroke:#333,stroke-width:2px
-    style O stroke:#333,stroke-width:2px
+    class BoardState {
+        +deque snake_body
+        +tuple food_pos
+        +tuple grid_bounds
+        +get_vision_vector() ndarray
+        +spawn_food()
+    }
+
+    class MovesEngine {
+        +update_position(board_state, action)
+        +check_collisions(board_state) boolean
+    }
+
+    class GraphicsEngine {
+        <<pygame-ce>>
+        -Surface window
+        -Clock clock
+        +render_frame(board_state, fps)
+    }
+
+    %% Training Orchestration Relationships
+    TrainingLoop --> DQNAgent : Gets Action, Triggers Train
+    TrainingLoop --> GymnasiumWrapper : Calls step(action), gets State/Reward
+
+    %% Environment Composition Relationships
+    GymnasiumWrapper *-- BoardState : Instantiates
+    GymnasiumWrapper *-- MovesEngine : Instantiates
+    GymnasiumWrapper o-- GraphicsEngine : Conditionally Instantiates
+
+    %% Internal Game Engine Data Flow
+    MovesEngine ..> BoardState : Mutates Data
+    GraphicsEngine ..> BoardState : Reads Data (Read-Only)
 ```
