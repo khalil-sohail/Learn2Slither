@@ -1,5 +1,26 @@
+from gymnasium_wrapper import GymnasiumWrapper
+from graphics_engine import GraphicsEngine
+from general_parsing import parseArguments
+# from dqn_agent import DQNAgent
+import pygame
 import sys
-from generalParsing import parseArguments
+
+def get_human_input(current_action):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                return 0
+            elif event.key == pygame.K_DOWN:
+                return 1
+            elif event.key == pygame.K_LEFT:
+                return 2
+            elif event.key == pygame.K_RIGHT:
+                return 3
+                
+    return current_action
 
 def main(argv):
     try:
@@ -8,19 +29,37 @@ def main(argv):
     except ValueError as e:
         print(f"Error: {e}")
 
+    if args['mode'] in ["play", "watch-train"]:
+        gfx = GraphicsEngine(window_size=800, board_size=args['board'], fps=args['fps'])
+    env = GymnasiumWrapper(board_size=args['board'])
+    # agent = None
+    
+    # if args['mode'] in ["train", "watch-train"]:
+    #     agent = DQNAgent()
+
+    state, _ = env.reset()
+    action = 3
+
     try:
-        # game loop
         while True:
+            if args['mode'] == "play":
+                action = get_human_input(action) 
+            # else:
+            #     action = agent.select_action(state) 
+            
+            next_state, reward, done, truncated, info = env.step(action)
+            print(f"Action: {action}, Reward: {reward}, Done: {done}, Truncated: {truncated}, Info: {info}")
             if args['mode'] == "train":
-                # env = GymnasiumWrapper(board_size=args['board'], render_mode=None)
-                print("Training... To Do.")
-            elif args['mode'] == "play":
-                # env = GymnasiumWrapper(board_size=args['board'], render_mode='human')
-                print("Playing... To Do.")
-            elif args['mode'] == "watch-train":
-                # env = GymnasiumWrapper(board_size=args['board'], render_mode='human')
-                print("Watching training... To Do.")
-            break  # Placeholder for the actual game loop logic
+                pass 
+
+            state = next_state
+
+            if args['mode'] in ["play", "watch-train"]:
+                gfx.render_frame(state)
+            if args['mode'] == "play" and done:
+                gfx.game_over()
+                break
+
     except ValueError as e:
         print(f"Error: {e}")
     except KeyboardInterrupt:
