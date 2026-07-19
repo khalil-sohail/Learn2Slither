@@ -3,11 +3,13 @@
 #      it will also be used to watch the training process.
 
 # the board will be represented as a 1D array of size board^2, where each cell can have the following values:
-# 0 - empty cell
-# 1 - snake body
-# 2 - snake head
-# 3 - red apple
-# 4 - green apple
+# 6 - empty cell
+# 3 - snake head
+# 4 - snake body
+# 5 - snake tail
+# 7 - red apple
+# 8 - green apple
+# 9 - wall
 
 # the Board is also capable of returning what the snake sees in its current state.
 #     which will be used as input for the neural network.
@@ -25,7 +27,7 @@
 #    we will have a total of 16 features for the snake vision.
 
 from collections import deque
-from constants import Entity
+from constants import Action, Entity, Textures
 
 import numpy as np
 
@@ -33,11 +35,13 @@ class BoardState:
     """
     Represents the state of the game board.
     The board is represented as a 1D array of size board_size^2, where each cell can have the following values:
-        0 - empty cell
-        1 - snake body
-        2 - snake head
-        3 - red apple
-        4 - green apple
+        6 - empty cell
+        3 - snake head
+        4 - snake body
+        5 - snake tail
+        7 - red apple
+        8 - green apple
+        9 - wall
     
     args:
         size: The size of the board (number of cells in one dimension).
@@ -45,7 +49,7 @@ class BoardState:
     functions:
         reset_game(): Resets the game state, clearing the board and placing the initial snake head and apples.
         move_snake(next_index): Moves the snake to the specified index, updating the board state accordingly.
-        spawn_apple(color): Spawns an apple of the specified color (3 for red, 4 for green) at a random empty cell.
+        spawn_apple(color): Spawns an apple of the specified color (Entity.RED_APPLE for red, Entity.GREEN_APPLE for green) at a random empty cell.
         get_vision_vector(): Returns a 16-value float32 NumPy array representing what the snake sees in its current state.
         get_terminal_vision_string(): Returns a strictly formatted plus-shape string representation of the snake's vision for terminal display.
     """
@@ -60,6 +64,7 @@ class BoardState:
         self.red_apple = None
         self.green_apple = None
         self.head_index = None
+        self.tail_direction = Textures.SNAKE_TAIL_LEFT
 
     def reset_game(self):
         """
@@ -75,9 +80,9 @@ class BoardState:
         self.body.append((self.size*self.size // 2) - self.size // 2)
         self.head_index = (self.size*self.size // 2) - self.size // 2
 
-        self.spawn_apple(3)
-        self.spawn_apple(4)
-        self.spawn_apple(4)
+        self.spawn_apple(Entity.RED_APPLE)
+        self.spawn_apple(Entity.GREEN_APPLE)
+        self.spawn_apple(Entity.GREEN_APPLE)
 
     def move_snake(self, next_index):
         """
@@ -107,24 +112,41 @@ class BoardState:
             self.board[tail_index] = Entity.EMPTY
 
         self.head_index = next_index
+        if self.body and len(self.body) > 1:
+            self.board[self.body[0]] = Entity.SNAKE_TAIL
+            # self.tail_direction = self.get_tail_direction(self.body[0], self.body[1])
 
     def spawn_apple(self, color):
         """
-        Spawns an apple of the specified color (3 for red, 4 for green) at a random empty cell.
+        Spawns an apple of the specified color (Entity.RED_APPLE for red, Entity.GREEN_APPLE for green) at a random empty cell.
         """
-        random_empty_indices = np.where(self.board == 0)[0]
+        random_empty_indices = np.where(self.board == Entity.EMPTY)[0]
         if random_empty_indices.size > 0:
             random_index = np.random.choice(random_empty_indices)
             self.board[random_index] = color
-            if color == 3:
+            if color == Entity.RED_APPLE:
                 self.red_apple = random_index
-            elif color == 4:
+            elif color == Entity.GREEN_APPLE:
                 self.green_apple = random_index
 
     def get_board_array(self):
         """
         Returns a copy of the current board state as a 1D NumPy array."""
         return self.board.copy()
+    
+    def get_tail_direction(self, front_index, behind_index):
+        difference = front_index - behind_index
+        
+        if difference == -self.size:
+            return Textures.SNAKE_TAIL_UP
+        elif difference == self.size:
+            return Textures.SNAKE_TAIL_DOWN
+        elif difference == -1:
+            return Textures.SNAKE_TAIL_LEFT
+        elif difference == 1:
+            return Textures.SNAKE_TAIL_RIGHT
+            
+        return Textures.SNAKE_TAIL_LEFT
 
     def get_vision_vector(self):
         """

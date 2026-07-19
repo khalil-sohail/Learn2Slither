@@ -4,15 +4,17 @@
 #    and handles closing the graphics engine safely.
 
 # the board will be represented as a 1D array of size board^2, where each cell can have the following values:
-# 0 - empty cell
-# 1 - snake body
-# 2 - snake head
-# 3 - red apple
-# 4 - green apple
-# 5 - wall
+# 6 - empty cell
+# 3 - snake head
+# 4 - snake body
+# 5 - snake tail
+# 7 - red apple
+# 8 - green apple
+# 9 - wall
 
+from constants import Entity, Textures
 import pygame
-from constants import Entity
+import os
 
 class GraphicsEngine:
     def __init__(self, window_size, board_size, fps):
@@ -23,16 +25,51 @@ class GraphicsEngine:
         :param fps: The frames per second for rendering.
         """
         pygame.init()
-        self.window_size = window_size
-        self.board_size = board_size
-        self.fps = fps
         self.screen = pygame.display.set_mode((window_size, window_size))
         self.clock = pygame.time.Clock()
 
-    def render_frame(self, board_array):
+        self.window_size = window_size
+        self.board_size = board_size
+        self.cell_size = window_size // board_size
+        self.fps = fps
+        
+        self.textures = self._load_textures()
+
+    def _load_textures(self):
+        textures = {}
+        
+        def load_sprite(filename):
+            path = os.path.join("../assets/images/", filename)
+            try:
+                img = pygame.image.load(path).convert_alpha()
+                return pygame.transform.scale(img, (self.cell_size, self.cell_size))
+            except FileNotFoundError:
+                print(f"Warning: {path} not found.")
+                return None
+
+        textures[Textures.EMPTY] = load_sprite("grass.jpg")
+        textures[Textures.RED_APPLE] = load_sprite("red_apple.png")
+        textures[Textures.GREEN_APPLE] = load_sprite("green_apple.png")
+        textures[Textures.WALL] = load_sprite("wall.png")
+        textures[Textures.SNAKE_HEAD_UP] = load_sprite("snake_head_tongue.png")
+        textures[Textures.SNAKE_HEAD_DOWN] = pygame.transform.rotate(textures[Textures.SNAKE_HEAD_UP], 180)
+        textures[Textures.SNAKE_HEAD_LEFT] = pygame.transform.rotate(textures[Textures.SNAKE_HEAD_UP], 90)
+        textures[Textures.SNAKE_HEAD_RIGHT] = pygame.transform.rotate(textures[Textures.SNAKE_HEAD_UP], -90)
+        textures[Textures.SNAKE_BODY] = load_sprite("snake_body.png")
+
+        textures[Textures.SNAKE_TAIL_UP] = load_sprite("snake_tail.png")
+        textures[Textures.SNAKE_TAIL_DOWN] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], 180)
+        textures[Textures.SNAKE_TAIL_LEFT] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], 90)
+        textures[Textures.SNAKE_TAIL_RIGHT] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], -90)
+
+        return textures
+
+    def render_frame(self, board_array, head_direction, tail_direction):
         """
         Renders the current board state to the display surface.
         :param board_array: A 1D NumPy array representing the current board state.
+        :param head_direction: The direction the snake's head is facing.
+        :param tail_direction: The direction the snake's tail is facing.
         """
         self.screen.fill((0, 0, 0))
 
@@ -43,21 +80,17 @@ class GraphicsEngine:
             x = col * cell_size
             y = row * cell_size
 
-            if value == Entity.EMPTY:
-                color = (0, 0, 0)
-            elif value == Entity.SNAKE_BODY:
-                color = (255, 255, 255)
-            elif value == Entity.SNAKE_HEAD:
-                color = (222, 222, 222)
-            elif value == Entity.RED_APPLE:
-                color = (255, 0, 0)
-            elif value == Entity.GREEN_APPLE:
-                color = (0, 0, 255)
-            elif value == Entity.WALL:
-                color = (100, 100, 100)
-
-            if value != Entity.EMPTY:
-                pygame.draw.rect(self.screen, color, (x, y, cell_size, cell_size))
+            if value == Entity.SNAKE_HEAD:
+                texture = self.textures.get(head_direction)    
+            elif value == Entity.SNAKE_TAIL:
+                texture = self.textures.get(tail_direction)
+            else:
+                texture = self.textures.get(value)
+            
+            if texture:
+                self.screen.blit(texture, (x, y))
+            else:
+                pygame.draw.rect(self.screen, (255, 0, 255), (x, y, self.cell_size, self.cell_size))
 
         pygame.display.flip()
         self.clock.tick(self.fps)

@@ -14,7 +14,7 @@
 # all moves will be validated before being applied to the board state, and if the move is invalid, the game will end.
 # all moves will be recived from the Gymnasium environment, and the moves will be applied to the board state, and the board state will be updated accordingly.
 
-from constants import Action
+from constants import Action, Entity
 
 class MovesEngine:
     """
@@ -32,7 +32,7 @@ class MovesEngine:
         """
         Returns the hypothetical next integer index based on Up/Down/Left/Right action.
         :param head_index: The current index of the snake's head.
-        :param action: The action to be taken (0: Up, 1: Down, 2: Left, 3: Right).
+        :param action: The action to be taken (Action.UP: Up, Action.DOWN: Down, Action.LEFT: Left, Action.RIGHT: Right).
         :return: The next index after applying the action.
         """
         row = head_index // self.size
@@ -61,7 +61,7 @@ class MovesEngine:
 
         destination_value = board_array[next_index]
         
-        if destination_value == 1 or destination_value == 5:
+        if destination_value == Entity.WALL or destination_value == Entity.SNAKE_BODY:
             return True
         return False
 

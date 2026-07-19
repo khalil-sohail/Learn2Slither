@@ -32,7 +32,7 @@ def main(argv):
         print(f"Error: {e}")
 
     if args['mode'] in ["play", "watch-train"]:
-        gfx = GraphicsEngine(window_size=800, board_size=args['board'], fps=args['fps'])
+        gfx = GraphicsEngine(window_size=1000, board_size=args['board'], fps=args['fps'])
     env = GymnasiumWrapper(board_size=args['board'])
     # agent = None
     
@@ -40,7 +40,7 @@ def main(argv):
     #     agent = DQNAgent()
 
     state, _ = env.reset()
-    action = 3
+    action = Action.RIGHT
 
     try:
         while True:
@@ -49,7 +49,7 @@ def main(argv):
             # else:
             #     action = agent.select_action(state) 
             
-            next_state, reward, done, truncated, info = env.step(action)
+            next_state, reward, done, truncated, info, tail_direction = env.step(action)
             print(f"Action: {action}, Reward: {reward}, Done: {done}, Truncated: {truncated}, Info: {info}")
             if args['mode'] == "train":
                 pass 
@@ -61,7 +61,7 @@ def main(argv):
                 break
 
             if args['mode'] in ["play", "watch-train"]:
-                gfx.render_frame(state)
+                gfx.render_frame(state, action, tail_direction)
 
     except ValueError as e:
         print(f"Error: {e}")
