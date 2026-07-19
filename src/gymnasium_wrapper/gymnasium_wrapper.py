@@ -54,7 +54,7 @@ class GymnasiumWrapper(gym.Env):
 
         if not is_dead:
             self.board.move_snake(next_index)
-            if ate_red_apple and len(self.board.body) <= 1:
+            if ate_red_apple and len(self.board.body) <= 0:
                 is_dead = True
 
 
@@ -67,9 +67,9 @@ class GymnasiumWrapper(gym.Env):
     def _calculate_reward(self, is_dead, ate_red_apple, ate_green_apple):
         """Calculates the reward for the current step."""
         if is_dead:
-            return -1.0
+            return -10.0
         elif ate_red_apple:
-            return -0.5
+            return -1.5
         elif ate_green_apple:
             return 2.0
         else:

@@ -25,6 +25,7 @@
 #    we will have a total of 16 features for the snake vision.
 
 from collections import deque
+from constants import Entity
 
 import numpy as np
 
@@ -64,11 +65,11 @@ class BoardState:
         """
         Resets the game state, clearing the board and placing the initial snake head and apples.
         """
-        self.board.fill(0)
-        self.board[:self.size] = 5
-        self.board[-self.size:] = 5
-        self.board[::self.size] = 5
-        self.board[self.size - 1::self.size] = 5
+        self.board.fill(Entity.EMPTY)
+        self.board[:self.size] = Entity.WALL
+        self.board[-self.size:] = Entity.WALL
+        self.board[::self.size] = Entity.WALL
+        self.board[self.size - 1::self.size] = Entity.WALL
 
         self.body.clear()
         self.body.append((self.size*self.size // 2) - self.size // 2)
@@ -87,24 +88,24 @@ class BoardState:
 
         if self.body:
             current_head_index = self.body[-1]
-            self.board[current_head_index] = 1
+            self.board[current_head_index] = Entity.SNAKE_BODY
         self.body.append(next_index)
-        self.board[next_index] = 2
+        self.board[next_index] = Entity.SNAKE_HEAD
 
-        if ate_apple == 3:
+        if ate_apple == Entity.RED_APPLE:
             self.red_apple = None
-            self.spawn_apple(3)
+            self.spawn_apple(Entity.RED_APPLE)
             tail_index = self.body.popleft() ### need a better way for that
-            self.board[tail_index] = 0
+            self.board[tail_index] = Entity.EMPTY
             tail_index = self.body.popleft()
-            self.board[tail_index] = 0
-        elif ate_apple == 4:
+            self.board[tail_index] = Entity.EMPTY
+        elif ate_apple == Entity.GREEN_APPLE:
             self.green_apple = None
-            self.spawn_apple(4)
+            self.spawn_apple(Entity.GREEN_APPLE)
         else:
             tail_index = self.body.popleft()
-            self.board[tail_index] = 0
-    
+            self.board[tail_index] = Entity.EMPTY
+
         self.head_index = next_index
 
     def spawn_apple(self, color):

@@ -14,6 +14,8 @@
 # all moves will be validated before being applied to the board state, and if the move is invalid, the game will end.
 # all moves will be recived from the Gymnasium environment, and the moves will be applied to the board state, and the board state will be updated accordingly.
 
+from constants import Action
+
 class MovesEngine:
     """
     The MovesEngine class is responsible for calculating and validating moves in the game.
@@ -36,13 +38,13 @@ class MovesEngine:
         row = head_index // self.size
         col = head_index % self.size
 
-        if action == 0:  # Move up
+        if action == Action.UP:  # Move up
             row = (row - 1) % self.size
-        elif action == 1:  # Move down
+        elif action == Action.DOWN:  # Move down
             row = (row + 1) % self.size
-        elif action == 2:  # Move left
+        elif action == Action.LEFT:  # Move left
             col = (col - 1) % self.size
-        elif action == 3:  # Move right
+        elif action == Action.RIGHT:  # Move right
             col = (col + 1) % self.size
 
         return row * self.size + col

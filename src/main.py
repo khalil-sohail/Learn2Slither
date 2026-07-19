@@ -5,6 +5,8 @@ from general_parsing import parseArguments
 import pygame
 import sys
 
+from constants import Action
+
 def get_human_input(current_action):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -12,13 +14,13 @@ def get_human_input(current_action):
             sys.exit()
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
-                return 0
+                return Action.UP
             elif event.key == pygame.K_DOWN:
-                return 1
+                return Action.DOWN
             elif event.key == pygame.K_LEFT:
-                return 2
+                return Action.LEFT
             elif event.key == pygame.K_RIGHT:
-                return 3
+                return Action.RIGHT
                 
     return current_action
 
@@ -54,11 +56,12 @@ def main(argv):
 
             state = next_state
 
-            if args['mode'] in ["play", "watch-train"]:
-                gfx.render_frame(state)
             if args['mode'] == "play" and done:
                 gfx.game_over()
                 break
+
+            if args['mode'] in ["play", "watch-train"]:
+                gfx.render_frame(state)
 
     except ValueError as e:
         print(f"Error: {e}")

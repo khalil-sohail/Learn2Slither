@@ -12,6 +12,7 @@
 # 5 - wall
 
 import pygame
+from constants import Entity
 
 class GraphicsEngine:
     def __init__(self, window_size, board_size, fps):
@@ -42,20 +43,20 @@ class GraphicsEngine:
             x = col * cell_size
             y = row * cell_size
 
-            if value == 0:
+            if value == Entity.EMPTY:
                 color = (0, 0, 0)
-            elif value == 1:
+            elif value == Entity.SNAKE_BODY:
                 color = (255, 255, 255)
-            elif value == 2:
+            elif value == Entity.SNAKE_HEAD:
                 color = (222, 222, 222)
-            elif value == 3:
+            elif value == Entity.RED_APPLE:
                 color = (255, 0, 0)
-            elif value == 4:
+            elif value == Entity.GREEN_APPLE:
                 color = (0, 0, 255)
-            elif value == 5:
+            elif value == Entity.WALL:
                 color = (100, 100, 100)
-            
-            if value != 0:
+
+            if value != Entity.EMPTY:
                 pygame.draw.rect(self.screen, color, (x, y, cell_size, cell_size))
 
         pygame.display.flip()
