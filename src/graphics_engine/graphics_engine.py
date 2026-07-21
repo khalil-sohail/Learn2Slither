@@ -48,35 +48,51 @@ class GraphicsEngine:
     def _load_textures(self):
         textures = {}
         
-        def load_sprite(filename: str, full_scale: bool = False):
+        def load_sprite(filename: str, full_scale: bool = False, darken_factor: int = 255):
             path = os.path.join("../assets/images/", filename)
             try:
                 img = pygame.image.load(path).convert_alpha()
+                
+                if darken_factor < 255:
+                    dark_color = (darken_factor, darken_factor, darken_factor, 255)
+                    img.fill(dark_color, special_flags=pygame.BLEND_RGBA_MULT)
+
                 if full_scale:
                     return pygame.transform.scale(img, (self.window_size, self.window_size))
-                elif not full_scale:
-                    return pygame.transform.scale(img, (self.cell_size, self.cell_size))
                 else:
-                    return img
+                    return pygame.transform.scale(img, (self.cell_size, self.cell_size))
             except FileNotFoundError:
                 print(f"Warning: {path} not found.")
-                return None
+                sys.exit(1)
 
-        textures[Textures.EMPTY] = load_sprite("grass.jpg")
-        textures[Textures.RED_APPLE] = load_sprite("red_apple.png")
-        textures[Textures.GREEN_APPLE] = load_sprite("green_apple.png")
-        textures[Textures.WALL] = load_sprite("wall.png")
-        textures[Textures.SNAKE_HEAD_UP] = load_sprite("snake_head_tongue.png")
-        textures[Textures.SNAKE_HEAD_DOWN] = pygame.transform.rotate(textures[Textures.SNAKE_HEAD_UP], 180)
-        textures[Textures.SNAKE_HEAD_LEFT] = pygame.transform.rotate(textures[Textures.SNAKE_HEAD_UP], 90)
-        textures[Textures.SNAKE_HEAD_RIGHT] = pygame.transform.rotate(textures[Textures.SNAKE_HEAD_UP], -90)
-        textures[Textures.SNAKE_BODY] = load_sprite("snake_body.png")
         textures[Textures.LOBBY_BACKGROUND] = load_sprite("lobby_background.png", full_scale=True)
+        textures[Textures.GAME_BACKGROUND] = load_sprite("game_background.jpg", full_scale=True, darken_factor=160)
+        textures[Textures.GREEN_APPLE] = load_sprite("green_apple.png")
+        textures[Textures.SNAKE_BODY] = load_sprite("snake_body.png")
+        textures[Textures.RED_APPLE] = load_sprite("red_apple.png")
+        textures[Textures.WALL] = load_sprite("wall.png")
+
+        base_head_up = load_sprite("snake_head.png")
+        tongue_head_up = load_sprite("snake_head_tongue.png")
+        textures[Textures.SNAKE_HEAD_UP] = [base_head_up, tongue_head_up]
+        textures[Textures.SNAKE_HEAD_DOWN] = [
+            pygame.transform.rotate(base_head_up, 180),
+            pygame.transform.rotate(tongue_head_up, 180)
+        ]
+        textures[Textures.SNAKE_HEAD_LEFT] = [
+            pygame.transform.rotate(base_head_up, 90),
+            pygame.transform.rotate(tongue_head_up, 90)
+        ]
+        textures[Textures.SNAKE_HEAD_RIGHT] = [
+            pygame.transform.rotate(base_head_up, -90),
+            pygame.transform.rotate(tongue_head_up, -90)
+        ]
+
         textures[Textures.SNAKE_TAIL_UP] = load_sprite("snake_tail.png")
-        textures[Textures.SNAKE_TAIL_DOWN] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], 180)
         textures[Textures.SNAKE_TAIL_LEFT] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], 90)
         textures[Textures.SNAKE_TAIL_RIGHT] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], -90)
-
+        textures[Textures.SNAKE_TAIL_DOWN] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], 180)
+        
         return textures
 
     def refresh_textures(self):
@@ -93,7 +109,13 @@ class GraphicsEngine:
         :param tail_direction: The direction the snake's tail is facing.
         """
         self.screen.fill((0, 0, 0))
+        if self.textures.get(Textures.GAME_BACKGROUND):
+            self.screen.blit(self.textures[Textures.GAME_BACKGROUND], (0, 0))
 
+
+        current_time = pygame.time.get_ticks()
+        animation_cycle = current_time % 1000
+        frame_index = 1 if animation_cycle > 600 else 0
         for index, value in enumerate(board_array):
             row = index // GLOBAL_CONFIG.get('board_size')
             col = index % GLOBAL_CONFIG.get('board_size')
@@ -101,16 +123,17 @@ class GraphicsEngine:
             y = row * self.cell_size
 
             if value == Entity.SNAKE_HEAD:
-                texture = self.textures.get(head_direction)    
+                texture = self.textures.get(head_direction)[frame_index]
             elif value == Entity.SNAKE_TAIL:
                 texture = self.textures.get(tail_direction)
             else:
                 texture = self.textures.get(value)
             
-            if texture:
-                self.screen.blit(texture, (x, y))
-            else:
-                pygame.draw.rect(self.screen, (255, 0, 255), (x, y, self.cell_size, self.cell_size))
+            if value != Entity.EMPTY:
+                if texture:
+                    self.screen.blit(texture, (x, y))
+                else:
+                    pygame.draw.rect(self.screen, (255, 0, 255), (x, y, self.cell_size, self.cell_size))
 
         pygame.display.flip()
         self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
@@ -183,21 +206,19 @@ class GraphicsEngine:
         if self.textures.get(Textures.LOBBY_BACKGROUND):
             self.screen.blit(self.textures[Textures.LOBBY_BACKGROUND], (0, 0))
 
-        # 1. Initialize UI Text Input State dynamically if it doesn't exist
         if not hasattr(self, 'active_input'):
             self.active_input = None
             self.input_buffer = ""
             self.error_msg = ""
             self.error_time = 0
 
-        self.draw_text_aligned("ENGINE CONFIGURATION MATRIX", (0, 255, 100), self.window_size // 2, 50, align="center")
+        self.draw_text_aligned("ENGINE CONFIGURATION MATRIX", (0, 255, 100), self.window_size // 2, self.window_size // 8, align="center")
 
         col_width = 400
         btn_height = 40
         padding = 10
-        start_y = 120
+        start_y = self.window_size // 4
         
-        # Center the single column dynamically based on window size
         center_x = (self.window_size - col_width) // 2
         
         config_keys = [
@@ -209,12 +230,10 @@ class GraphicsEngine:
             ("reward_step", "Reward: Step")
         ]
 
-        # Updated custom colors
         btn_normal = (50, 50, 50, 60)
         btn_hover = (100, 100, 200, 120)
         interactive_zones = []
 
-        # 2. Render Single Centered Column
         self.draw_text_aligned("ENVIRONMENT RULES", (200, 200, 200), self.window_size // 2, start_y - 25, align="center")
         for i, (key, label) in enumerate(config_keys):
             rect = pygame.Rect(center_x, start_y + (i * (btn_height + padding)), col_width, btn_height)
@@ -224,23 +243,18 @@ class GraphicsEngine:
             self.draw_text_input_row(rect, label, display_val, is_active, btn_normal, btn_hover)
             interactive_zones.append((rect, key))
 
-        # 3. Render Error Message
         if self.error_msg and pygame.time.get_ticks() - self.error_time < 3000:
             self.draw_text_aligned(self.error_msg, (255, 50, 50), self.window_size // 2, self.window_size - 110, align="center")
 
-        # 4. Render Back Button
         back_btn_rect = pygame.Rect(self.window_size // 2 - 150, self.window_size - 80, 300, 50)
         self.draw_button(back_btn_rect, "RETURN TO LOBBY", btn_normal, btn_hover)
 
-        # 5. Event Loop (Mouse & Keyboard)
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 pygame.quit()
                 sys.exit()
                 
-            # MOUSE INPUT
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Try to save current input if clicking away
                 if self.active_input:
                     try:
                         GLOBAL_CONFIG.update(self.active_input, self.input_buffer)
@@ -250,11 +264,9 @@ class GraphicsEngine:
                         self.error_time = pygame.time.get_ticks()
                     self.active_input = None
 
-                # Check if Return button was clicked
                 if back_btn_rect.collidepoint(event.pos):
                     return AppState.LOBBY
 
-                # Check if an input field was clicked
                 for rect, key in interactive_zones:
                     if rect.collidepoint(event.pos):
                         self.active_input = key
@@ -263,7 +275,6 @@ class GraphicsEngine:
                             self.input_buffer = ""
                         break
                         
-            # KEYBOARD INPUT
             elif event.type == pygame.KEYDOWN and self.active_input:
                 if event.key == pygame.K_RETURN:
                     try:
@@ -287,6 +298,7 @@ class GraphicsEngine:
         self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
 
         return AppState.CONFIG
+
     def draw_text_aligned(self, text, color, x, y, align="center"):
         """Utility to draw text anchored left, right, or center."""
         text_surface = self.font.render(str(text), True, color)
@@ -309,23 +321,18 @@ class GraphicsEngine:
         
         current_color = active_color if is_active else (hover_color if is_hovered else default_color)
         
-        # Transparent background
         alpha_surface = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
         pygame.draw.rect(alpha_surface, current_color, alpha_surface.get_rect())
         self.screen.blit(alpha_surface, (rect.x, rect.y))
         
-        # Border (Highlights bright green if actively typing)
         border_color = (0, 255, 100) if is_active else (100, 100, 100)
         pygame.draw.rect(self.screen, border_color, rect, width=2 if is_active else 1)
         
-        # Draw label on the left
         self.draw_text_aligned(label, (255, 255, 255), rect.x + 15, rect.centery, align="left")
         
-        # Draw value on the right
         val_color = (255, 255, 255) if is_active else (0, 255, 100)
         text_to_draw = str(display_value)
         
-        # Add blinking cursor if active (blinks every 500ms)
         if is_active and (pygame.time.get_ticks() % 1000 < 500):
             text_to_draw += "|"
             

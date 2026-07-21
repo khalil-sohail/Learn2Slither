@@ -21,6 +21,7 @@ class Textures(IntEnum):
     GREEN_APPLE = 11
     WALL = 12
     LOBBY_BACKGROUND = 13
+    GAME_BACKGROUND = 14
 
 class Entity(IntEnum):
     EMPTY = Textures.EMPTY

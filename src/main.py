@@ -34,7 +34,7 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
             action = agent.select_action(state)
         
         next_state, reward, is_dead, truncated, info, tail_direction = env.step(action)
-        print(f"Action: {action}, Reward: {reward}, is_dead: {is_dead}, Truncated: {truncated}, Info: {info}")
+        # print(f"Action: {action}, Reward: {reward}, is_dead: {is_dead}, Truncated: {truncated}, Info: {info}")
         if GLOBAL_CONFIG.get('mode') == "train":
             pass
 

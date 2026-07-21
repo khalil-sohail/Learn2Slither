@@ -8,10 +8,10 @@ class Config:
     def __init__(self):
         # Environment Rules
         self.board_size = 10
-        self.fps_cap = 15          # 15 for human play, 0 for uncapped training
+        self.fps_cap = 15
         self.reward_green_apple = 1.0
         self.reward_red_apple = -0.5
-        self.reward_death = -1.0
+        self.reward_death = -2.0
         self.reward_step = -0.01
         
         # Neural Network Hyperparameters
