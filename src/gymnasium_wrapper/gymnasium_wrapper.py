@@ -11,6 +11,7 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+from app_config.config import GLOBAL_CONFIG
 from board_state import BoardState
 from moves_engine import MovesEngine
 
@@ -18,30 +19,27 @@ class GymnasiumWrapper(gym.Env):
     """A Gymnasium wrapper for the Snake game."""
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 15}
 
-    def __init__(self, board_size=10, render_mode=None):
+    def __init__(self):
         """
         Initializes the Gymnasium environment for the Snake game.
         :param board_size: The size of the board (number of cells in one dimension).
-        :param render_mode: The rendering mode, either "human" or "rgb_array".
         """
-        self.board_size = board_size
-        self.render_mode = render_mode
+        self.board_size = GLOBAL_CONFIG.get('board_size')
+        # self.render_mode = "rgb_array" if GLOBAL_CONFIG.get('mode') in ["train", "watch-train"] else "human"
         self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.Box(low=0, high=4, shape=(board_size * board_size,), dtype=np.int32)
-        self.board = BoardState(size=board_size)
-        self.physics = MovesEngine(size=board_size)
+        self.observation_space = spaces.Box(low=0, high=4, shape=(self.board_size * self.board_size,), dtype=np.int32)
+        self.board = BoardState(size=self.board_size)
+        self.physics = MovesEngine(size=self.board_size)
 
-    def reset(self, seed=None, options=None):
+    def reset(self):
         """
         Resets the environment to an initial state.
-        param seed: Optional seed for random number generation.
-        param options: Optional dictionary of additional options.
         :return: A tuple containing the initial observation and an empty info dictionary.
         """
         self.board.reset_game()
         return self.board.get_board_array(), {}
 
-    def step(self, action):
+    def step(self, action: int):
         """
         Executes one time step within the environment based on the given action.
         :param action: The action to be taken (Action.UP: Up, Action.DOWN: Down, Action.LEFT: Left, Action.RIGHT: Right).
@@ -65,15 +63,15 @@ class GymnasiumWrapper(gym.Env):
         
         return self.board.get_board_array(), reward, is_dead, truncated, info, tail_direction
 
-    def _calculate_reward(self, is_dead, ate_red_apple, ate_green_apple):
+    def _calculate_reward(self, is_dead: bool, ate_red_apple: bool, ate_green_apple: bool):
         """Calculates the reward for the current step."""
         reward = 0.0
 
         if is_dead:
-            reward += -10.0
+            reward += GLOBAL_CONFIG.get('reward_death')
         if ate_red_apple:
-            reward += -1.5
+            reward += GLOBAL_CONFIG.get('reward_red_apple')
         if ate_green_apple:
-            reward += 2.0
+            reward += GLOBAL_CONFIG.get('reward_green_apple')
 
         return reward

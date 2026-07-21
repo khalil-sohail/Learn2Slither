@@ -20,6 +20,7 @@ class Textures(IntEnum):
     RED_APPLE = 10
     GREEN_APPLE = 11
     WALL = 12
+    LOBBY_BACKGROUND = 13
 
 class Entity(IntEnum):
     EMPTY = Textures.EMPTY
@@ -29,3 +30,9 @@ class Entity(IntEnum):
     RED_APPLE = Textures.RED_APPLE
     GREEN_APPLE = Textures.GREEN_APPLE
     WALL = Textures.WALL
+
+class AppState(IntEnum):
+    LOBBY = 0
+    CONFIG = 1
+    PLAYING = 2
+    EXIT = 3
