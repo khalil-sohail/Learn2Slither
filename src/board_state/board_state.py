@@ -27,6 +27,7 @@
 #    we will have a total of 16 features for the snake vision.
 
 from collections import deque
+from app_config.config import GLOBAL_CONFIG
 from constants import Action, Entity, Textures
 
 import numpy as np
@@ -47,19 +48,19 @@ class BoardState:
         size: The size of the board (number of cells in one dimension).
     
     functions:
-        reset_game(): Resets the game state, clearing the board and placing the initial snake head and apples.
-        move_snake(next_index): Moves the snake to the specified index, updating the board state accordingly.
-        spawn_apple(color): Spawns an apple of the specified color (Entity.RED_APPLE for red, Entity.GREEN_APPLE for green) at a random empty cell.
+        reset_game(new_size: int): Resets the game state, clearing the board and placing the initial snake head and apples.
+        move_snake(next_index: int): Moves the snake to the specified index, updating the board state accordingly.
+        spawn_apple(color: Entity): Spawns an apple of the specified color (Entity.RED_APPLE for red, Entity.GREEN_APPLE for green) at a random empty cell.
         get_vision_vector(): Returns a 16-value float32 NumPy array representing what the snake sees in its current state.
         get_terminal_vision_string(): Returns a strictly formatted plus-shape string representation of the snake's vision for terminal display.
     """
-    def __init__(self, size):
+    def __init__(self):
         """
         Initializes the BoardState with the specified size.
         :param size: The size of the board (number of cells in one dimension).
         """
-        self.size = size
-        self.board = np.zeros((size*size), dtype=int)
+        self.size = GLOBAL_CONFIG.get('board_size')
+        self.board = np.zeros((self.size*self.size), dtype=int)
         self.body = deque()
         self.red_apple = None
         self.green_apple = None
@@ -70,6 +71,14 @@ class BoardState:
         """
         Resets the game state, clearing the board and placing the initial snake head and apples.
         """
+        self.size = GLOBAL_CONFIG.get('board_size')
+        self.board = np.zeros((self.size*self.size), dtype=int)
+        self.body.clear()
+        self.red_apple = None
+        self.green_apple = None
+        self.head_index = None
+        self.tail_direction = Textures.SNAKE_TAIL_LEFT
+
         self.board.fill(Entity.EMPTY)
         self.board[:self.size] = Entity.WALL
         self.board[-self.size:] = Entity.WALL
@@ -84,7 +93,7 @@ class BoardState:
         self.spawn_apple(Entity.GREEN_APPLE)
         self.spawn_apple(Entity.GREEN_APPLE)
 
-    def move_snake(self, next_index):
+    def move_snake(self, next_index: int):
         """
         Moves the snake to the specified index, updating the board state accordingly.
         :param next_index: The index to which the snake's head will move.
@@ -114,9 +123,8 @@ class BoardState:
         self.head_index = next_index
         if self.body and len(self.body) > 1:
             self.board[self.body[0]] = Entity.SNAKE_TAIL
-            # self.tail_direction = self.get_tail_direction(self.body[0], self.body[1])
 
-    def spawn_apple(self, color):
+    def spawn_apple(self, color: Entity):
         """
         Spawns an apple of the specified color (Entity.RED_APPLE for red, Entity.GREEN_APPLE for green) at a random empty cell.
         """
@@ -134,7 +142,7 @@ class BoardState:
         Returns a copy of the current board state as a 1D NumPy array."""
         return self.board.copy()
     
-    def get_tail_direction(self, front_index, behind_index):
+    def get_tail_direction(self, front_index: int, behind_index: int):
         difference = front_index - behind_index
         
         if difference == -self.size:

@@ -36,3 +36,8 @@ class AppState(IntEnum):
     CONFIG = 1
     PLAYING = 2
     EXIT = 3
+    TRAIN = 4
+    WATCH_TRAIN = 5
+    WATCH_EXPLORATION_TRAIN = 6
+    WATCH_EXPLOITATION = 7
+

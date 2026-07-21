@@ -17,25 +17,26 @@ from moves_engine import MovesEngine
 
 class GymnasiumWrapper(gym.Env):
     """A Gymnasium wrapper for the Snake game."""
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 15}
 
     def __init__(self):
         """
         Initializes the Gymnasium environment for the Snake game.
         :param board_size: The size of the board (number of cells in one dimension).
         """
-        self.board_size = GLOBAL_CONFIG.get('board_size')
-        # self.render_mode = "rgb_array" if GLOBAL_CONFIG.get('mode') in ["train", "watch-train"] else "human"
+        # self.board_size = GLOBAL_CONFIG.get('board_size')
         self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.Box(low=0, high=4, shape=(self.board_size * self.board_size,), dtype=np.int32)
-        self.board = BoardState(size=self.board_size)
-        self.physics = MovesEngine(size=self.board_size)
+        self.observation_space = spaces.Box(low=0, high=4, shape=(GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size'),), dtype=np.int32)
+        self.board = BoardState()
+        self.physics = MovesEngine()
 
     def reset(self):
         """
         Resets the environment to an initial state.
         :return: A tuple containing the initial observation and an empty info dictionary.
         """
+        self.observation_space = spaces.Box(low=0, high=4, shape=(GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size'),), dtype=np.int32)
+        self.board = BoardState()
+        self.physics = MovesEngine()
         self.board.reset_game()
         return self.board.get_board_array(), {}
 

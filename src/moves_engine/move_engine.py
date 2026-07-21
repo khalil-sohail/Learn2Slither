@@ -14,6 +14,7 @@
 # all moves will be validated before being applied to the board state, and if the move is invalid, the game will end.
 # all moves will be recived from the Gymnasium environment, and the moves will be applied to the board state, and the board state will be updated accordingly.
 
+from app_config.config import GLOBAL_CONFIG
 from constants import Action, Entity
 
 class MovesEngine:
@@ -21,12 +22,12 @@ class MovesEngine:
     The MovesEngine class is responsible for calculating and validating moves in the game.
     it will update the board state based on the moves made by the agent or user input.
     """
-    def __init__(self, size: int):
+    def __init__(self):
         """
         Initializes the MovesEngine with the specified board size.
         :param size: The size of the board (number of cells in one dimension).
         """
-        self.size = size
+        self.size = GLOBAL_CONFIG.get('board_size')
 
     def get_next_position(self, head_index, action):
         """

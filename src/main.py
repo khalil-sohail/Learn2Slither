@@ -24,28 +24,30 @@ def get_input(current_action):
                 
     return current_action
 
-def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent):
+def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, current_state: AppState):
     state, _ = env.reset()
     action = Action.RIGHT
 
     while True:
         action = get_input(action) 
-        # else:
-        #     action = agent.select_action(state) 
+        if current_state in [AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
+            action = agent.select_action(state)
         
-        next_state, reward, done, truncated, info, tail_direction = env.step(action)
-        print(f"Action: {action}, Reward: {reward}, Done: {done}, Truncated: {truncated}, Info: {info}")
+        next_state, reward, is_dead, truncated, info, tail_direction = env.step(action)
+        print(f"Action: {action}, Reward: {reward}, is_dead: {is_dead}, Truncated: {truncated}, Info: {info}")
         if GLOBAL_CONFIG.get('mode') == "train":
-            pass 
+            pass
 
         state = next_state
 
-        if GLOBAL_CONFIG.get('mode') == "play" and done:
+        if GLOBAL_CONFIG.get('mode') == "play" and is_dead:
             gfx.game_over()
             break
 
-        if GLOBAL_CONFIG.get('mode') in ["play", "watch-train"]:
-            gfx.render_frame(state, action, tail_direction)
+        if current_state in [AppState.PLAYING, AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION] and not is_dead:
+            gfx.render_user_game_frame(state, action, tail_direction)
+        elif current_state in [AppState.TRAIN]:
+            gfx.render_agent_train()
     
     return AppState.LOBBY
 
@@ -57,12 +59,8 @@ def main(argv):
 
     current_state = AppState.LOBBY
     try:
-        if GLOBAL_CONFIG.get('mode') in ["play", "watch-train"]:
-            gfx = GraphicsEngine(
-                window_size=800,
-                board_size=GLOBAL_CONFIG.get('board_size'),
-                fps=GLOBAL_CONFIG.get('fps_cap')
-            )
+        if GLOBAL_CONFIG.get('mode') in ["play", "watch-train", "watch-exploration-train", "watch-exploitation"]:
+            gfx = GraphicsEngine(window_size=900)
         env = GymnasiumWrapper()
         agent = DQNAgent()
 
@@ -71,8 +69,10 @@ def main(argv):
                 current_state = gfx.render_lobby()
             if current_state == AppState.CONFIG:
                 current_state = gfx.render_config()
-            if current_state == AppState.PLAYING:
-                current_state = game_loop(gfx, env, agent)
+                env.reset()
+                gfx.refresh_textures()
+            if current_state in [AppState.PLAYING, AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
+                current_state = game_loop(gfx, env, agent, current_state)
 
     except ValueError as e:
         print(f"Error: {e}")

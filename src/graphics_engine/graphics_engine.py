@@ -21,26 +21,30 @@ import pygame
 import os
 
 class GraphicsEngine:
-    def __init__(self, window_size: int, board_size: int, fps: int):
+    def __init__(self, window_size: int):
         """
         Initializes the graphics engine with the specified window size, board size, and frames per second (fps).
-        :param window_size: The size of the window in pixels (width and height).
+        :param window_size: The size of the window in pixels.
         :param board_size: The size of the board (number of cells in one dimension).
         :param fps: The frames per second for rendering.
         """
         pygame.init()
-        self.screen = pygame.display.set_mode((window_size, window_size))
+        self.screen = pygame.display.set_mode((window_size, window_size), pygame.HIDDEN)
         self.clock = pygame.time.Clock()
-
         self.window_size = window_size
-        self.board_size = board_size
-        self.cell_size = window_size // board_size
-        self.fps = fps
-
         self.font = pygame.font.SysFont("Arial", 24, bold=True)
-
         self.textures = self._load_textures()
+        self.screen = pygame.display.set_mode((window_size, window_size))
 
+    @property
+    def cell_size(self):
+        """
+        Dynamically calculates the square cell size based on the live config.
+        Returns a single integer.
+        """
+        board_size: int = GLOBAL_CONFIG.get('board_size')
+        return self.window_size // board_size
+    
     def _load_textures(self):
         textures = {}
         
@@ -49,7 +53,6 @@ class GraphicsEngine:
             try:
                 img = pygame.image.load(path).convert_alpha()
                 if full_scale:
-                    print(f"Loaded texture: {filename} at full scale {self.window_size}x{self.window_size} ")
                     return pygame.transform.scale(img, (self.window_size, self.window_size))
                 elif not full_scale:
                     return pygame.transform.scale(img, (self.cell_size, self.cell_size))
@@ -76,7 +79,13 @@ class GraphicsEngine:
 
         return textures
 
-    def render_frame(self, board_array: np.ndarray, head_direction: Textures, tail_direction: Textures):
+    def refresh_textures(self):
+        """
+        Forces the engine to reload and rescale all image assets 
+        """
+        self.textures = self._load_textures()
+
+    def render_user_game_frame(self, board_array: np.ndarray, head_direction: Textures, tail_direction: Textures):
         """
         Renders the current board state to the display surface.
         :param board_array: A 1D NumPy array representing the current board state.
@@ -85,12 +94,11 @@ class GraphicsEngine:
         """
         self.screen.fill((0, 0, 0))
 
-        cell_size = self.window_size // self.board_size
         for index, value in enumerate(board_array):
-            row = index // self.board_size
-            col = index % self.board_size
-            x = col * cell_size
-            y = row * cell_size
+            row = index // GLOBAL_CONFIG.get('board_size')
+            col = index % GLOBAL_CONFIG.get('board_size')
+            x = col * self.cell_size
+            y = row * self.cell_size
 
             if value == Entity.SNAKE_HEAD:
                 texture = self.textures.get(head_direction)    
@@ -105,61 +113,225 @@ class GraphicsEngine:
                 pygame.draw.rect(self.screen, (255, 0, 255), (x, y, self.cell_size, self.cell_size))
 
         pygame.display.flip()
-        self.clock.tick(self.fps)
+        self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
     
+    def render_agent_train(self):
+        pass
+
     def render_lobby(self):
         pygame.draw.rect(self.screen, (0, 0, 0), (0, 0, self.window_size, self.window_size))
-        
         if self.textures.get(Textures.LOBBY_BACKGROUND):
             self.screen.blit(self.textures[Textures.LOBBY_BACKGROUND], (0, 0))
             
         self.draw_text("Learn2Slither Engine", (0, 255, 100), self.window_size // 2, 100)
         
         center_x = self.window_size // 2 - 175
-        play_btn = pygame.Rect(center_x, 200, 350, 50)
-        watch_train_btn = pygame.Rect(center_x, 270, 350, 50)
-        watch_exploration_train_btn = pygame.Rect(center_x, 340, 350, 50)
-        watch_play_exploitation_btn = pygame.Rect(center_x, 410, 350, 50)
-        config_btn = pygame.Rect(center_x, 480, 350, 50)
+        train_btn = pygame.Rect(center_x, 200, 350, 50)
+        play_btn = pygame.Rect(center_x, 270, 350, 50)
+        watch_train_btn = pygame.Rect(center_x, 340, 350, 50)
+        watch_exploration_train_btn = pygame.Rect(center_x, 410, 350, 50)
+        watch_play_exploitation_btn = pygame.Rect(center_x, 480, 350, 50)
+        config_btn = pygame.Rect(center_x, 550, 350, 50)
         
         btn_normal = (50, 50, 50, 60)
         btn_hover = (100, 100, 200, 120)
         
+        self.draw_button(train_btn, "TRAIN AGENT", btn_normal, btn_hover)
         self.draw_button(play_btn, "HUMAN OVERRIDE", btn_normal, btn_hover)
-        self.draw_button(watch_train_btn, "TRAINING MODE", btn_normal, btn_hover)
+        self.draw_button(watch_train_btn, "WATCH TRAINING", btn_normal, btn_hover)
         self.draw_button(watch_exploration_train_btn, "RANDOM EXPLORATION", btn_normal, btn_hover)
         self.draw_button(watch_play_exploitation_btn, "AGENT INFERENCE", btn_normal, btn_hover)
         self.draw_button(config_btn, "ENGINE SETTINGS", btn_normal, btn_hover)
         
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 sys.exit()
                 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if watch_train_btn.collidepoint(event.pos):
+                    GLOBAL_CONFIG.update('mode', "train")
+                    return AppState.TRAIN
+
                 if play_btn.collidepoint(event.pos):
                     GLOBAL_CONFIG.update('mode', "play")
                     return AppState.PLAYING
-                    
+
                 if watch_train_btn.collidepoint(event.pos):
                     GLOBAL_CONFIG.update('mode', "watch-train")
-                    return AppState.PLAYING
-                    
+                    return AppState.WATCH_TRAIN
+
                 if watch_exploration_train_btn.collidepoint(event.pos):
                     GLOBAL_CONFIG.update('mode', "watch-exploration-train")
-                    return AppState.PLAYING
-                    
+                    return AppState.WATCH_EXPLORATION_TRAIN
+
                 if watch_play_exploitation_btn.collidepoint(event.pos):
                     GLOBAL_CONFIG.update('mode', "watch-exploitation")
-                    return AppState.PLAYING
-                    
+                    return AppState.WATCH_EXPLOITATION
+
                 if config_btn.collidepoint(event.pos):
                     return AppState.CONFIG
-                    
+
         pygame.display.flip()
         return AppState.LOBBY
 
     def render_config(self):
-        return AppState.PLAYING
+        """
+        Renders the configuration screen where users can view and modify engine settings.
+        :return: The next AppState based on user interaction.
+        """        
+        pygame.draw.rect(self.screen, (0, 0, 0), (0, 0, self.window_size, self.window_size))
+        if self.textures.get(Textures.LOBBY_BACKGROUND):
+            self.screen.blit(self.textures[Textures.LOBBY_BACKGROUND], (0, 0))
+
+        # 1. Initialize UI Text Input State dynamically if it doesn't exist
+        if not hasattr(self, 'active_input'):
+            self.active_input = None
+            self.input_buffer = ""
+            self.error_msg = ""
+            self.error_time = 0
+
+        self.draw_text_aligned("ENGINE CONFIGURATION MATRIX", (0, 255, 100), self.window_size // 2, 50, align="center")
+
+        col_width = 400
+        btn_height = 40
+        padding = 10
+        start_y = 120
+        
+        # Center the single column dynamically based on window size
+        center_x = (self.window_size - col_width) // 2
+        
+        config_keys = [
+            ("board_size", "Board Size"),
+            ("fps_cap", "Target FPS"),
+            ("reward_green_apple", "Reward: Green Apple"),
+            ("reward_red_apple", "Reward: Red Apple"),
+            ("reward_death", "Reward: Death"),
+            ("reward_step", "Reward: Step")
+        ]
+
+        # Updated custom colors
+        btn_normal = (50, 50, 50, 60)
+        btn_hover = (100, 100, 200, 120)
+        interactive_zones = []
+
+        # 2. Render Single Centered Column
+        self.draw_text_aligned("ENVIRONMENT RULES", (200, 200, 200), self.window_size // 2, start_y - 25, align="center")
+        for i, (key, label) in enumerate(config_keys):
+            rect = pygame.Rect(center_x, start_y + (i * (btn_height + padding)), col_width, btn_height)
+            is_active = (self.active_input == key)
+            display_val = self.input_buffer if is_active else getattr(GLOBAL_CONFIG, key)
+            
+            self.draw_text_input_row(rect, label, display_val, is_active, btn_normal, btn_hover)
+            interactive_zones.append((rect, key))
+
+        # 3. Render Error Message
+        if self.error_msg and pygame.time.get_ticks() - self.error_time < 3000:
+            self.draw_text_aligned(self.error_msg, (255, 50, 50), self.window_size // 2, self.window_size - 110, align="center")
+
+        # 4. Render Back Button
+        back_btn_rect = pygame.Rect(self.window_size // 2 - 150, self.window_size - 80, 300, 50)
+        self.draw_button(back_btn_rect, "RETURN TO LOBBY", btn_normal, btn_hover)
+
+        # 5. Event Loop (Mouse & Keyboard)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+                
+            # MOUSE INPUT
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Try to save current input if clicking away
+                if self.active_input:
+                    try:
+                        GLOBAL_CONFIG.update(self.active_input, self.input_buffer)
+                        self.error_msg = ""
+                    except ValueError as e:
+                        self.error_msg = str(e)
+                        self.error_time = pygame.time.get_ticks()
+                    self.active_input = None
+
+                # Check if Return button was clicked
+                if back_btn_rect.collidepoint(event.pos):
+                    return AppState.LOBBY
+
+                # Check if an input field was clicked
+                for rect, key in interactive_zones:
+                    if rect.collidepoint(event.pos):
+                        self.active_input = key
+                        self.input_buffer = str(getattr(GLOBAL_CONFIG, key))
+                        if self.input_buffer == "None":
+                            self.input_buffer = ""
+                        break
+                        
+            # KEYBOARD INPUT
+            elif event.type == pygame.KEYDOWN and self.active_input:
+                if event.key == pygame.K_RETURN:
+                    try:
+                        GLOBAL_CONFIG.update(self.active_input, self.input_buffer)
+                        self.active_input = None
+                        self.error_msg = ""
+                    except ValueError as e:
+                        self.error_msg = str(e)
+                        self.error_time = pygame.time.get_ticks()
+                
+                elif event.key == pygame.K_BACKSPACE:
+                    self.input_buffer = self.input_buffer[:-1]
+                
+                elif event.key == pygame.K_ESCAPE:
+                    self.active_input = None
+                
+                else:
+                    self.input_buffer += event.unicode
+
+        pygame.display.flip()
+        self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
+
+        return AppState.CONFIG
+    def draw_text_aligned(self, text, color, x, y, align="center"):
+        """Utility to draw text anchored left, right, or center."""
+        text_surface = self.font.render(str(text), True, color)
+        text_rect = text_surface.get_rect()
+        
+        if align == "center":
+            text_rect.center = (x, y)
+        elif align == "left":
+            text_rect.midleft = (x, y)
+        elif align == "right":
+            text_rect.midright = (x, y)
+            
+        self.screen.blit(text_surface, text_rect)
+        return text_rect
+
+    def draw_text_input_row(self, rect, label, display_value, is_active, default_color, hover_color, active_color=(20, 80, 40, 220)):
+        """Draws a configuration row that supports text entry state."""
+        mouse_pos = pygame.mouse.get_pos()
+        is_hovered = rect.collidepoint(mouse_pos)
+        
+        current_color = active_color if is_active else (hover_color if is_hovered else default_color)
+        
+        # Transparent background
+        alpha_surface = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(alpha_surface, current_color, alpha_surface.get_rect())
+        self.screen.blit(alpha_surface, (rect.x, rect.y))
+        
+        # Border (Highlights bright green if actively typing)
+        border_color = (0, 255, 100) if is_active else (100, 100, 100)
+        pygame.draw.rect(self.screen, border_color, rect, width=2 if is_active else 1)
+        
+        # Draw label on the left
+        self.draw_text_aligned(label, (255, 255, 255), rect.x + 15, rect.centery, align="left")
+        
+        # Draw value on the right
+        val_color = (255, 255, 255) if is_active else (0, 255, 100)
+        text_to_draw = str(display_value)
+        
+        # Add blinking cursor if active (blinks every 500ms)
+        if is_active and (pygame.time.get_ticks() % 1000 < 500):
+            text_to_draw += "|"
+            
+        self.draw_text_aligned(text_to_draw, val_color, rect.right - 15, rect.centery, align="right")
+        
+        return is_hovered
 
     def draw_text(self, text: str, color: tuple, x: int, y: int, center: bool = True):
         """

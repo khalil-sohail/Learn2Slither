@@ -12,7 +12,7 @@ class Config:
         self.reward_green_apple = 1.0
         self.reward_red_apple = -0.5
         self.reward_death = -1.0
-        self.reward_step = -0.01   # Penalty to prevent infinite loops
+        self.reward_step = -0.01
         
         # Neural Network Hyperparameters
         self.learning_rate = 0.001
@@ -27,15 +27,28 @@ class Config:
     
     def update(self, key, value):
         """
-        Updates the configuration with a new value for a given key.
-        :param key: The configuration key to update.
-        :param value: The new value to set for the key.
+        Updates the configuration, automatically casting the input to the correct data type.
+        Raises a ValueError if the conversion fails.
         """
-        
-        if hasattr(self, key):
-            setattr(self, key, value)
-        else:
+        if not hasattr(self, key):
             raise ValueError(f"Invalid configuration key: {key}")
+
+        current_value = getattr(self, key)
+
+        if current_value is None:
+            if value == "" or str(value).lower() == "none":
+                setattr(self, key, None)
+            else:
+                setattr(self, key, str(value))
+            return
+
+        expected_type = type(current_value)
+
+        try:
+            casted_value = expected_type(value)
+            setattr(self, key, casted_value)
+        except ValueError:
+            raise ValueError(f"Invalid input: Expected a {expected_type.__name__}")
     
     def get(self, key):
         """
