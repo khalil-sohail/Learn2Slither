@@ -9,8 +9,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# from model import LinearQNet  # Assuming you build the network in a separate file
-
 class DQNAgent:
     def __init__(self):
         """

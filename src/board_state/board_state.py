@@ -96,13 +96,8 @@ class BoardState:
         self.head_index = (self.size*self.size // 2) - self.size // 2
 
         self.spawn_apple(Entity.RED_APPLE)
-        self.spawn_apple(Entity.RED_APPLE)
-        self.spawn_apple(Entity.RED_APPLE)
-        self.spawn_apple(Entity.RED_APPLE)
-        self.spawn_apple(Entity.GREEN_APPLE)
-        self.spawn_apple(Entity.GREEN_APPLE)
-        self.spawn_apple(Entity.GREEN_APPLE)
-        self.spawn_apple(Entity.GREEN_APPLE)
+        for i in range(2):
+            self.spawn_apple(Entity.GREEN_APPLE)
 
     def move_snake(self, next_index: int):
         """

@@ -113,7 +113,7 @@ class GraphicsEngine:
         Renders a small HUD panel with score, green/red apples eaten, and live FPS,
         with values aligned in a column regardless of label length.
         """
-        live_fps = int(self.clock.get_fps())
+        live_fps = round(self.clock.get_fps())
 
         padding = 14
         line_gap = 8
@@ -184,11 +184,11 @@ class GraphicsEngine:
             ("Red Apples Penalties:", str(red_apple_eaten), (255, 100, 100)),
         ]
         label_col_width = max(self.font.size(label)[0] for label, _, _ in rows)
-        value_gap = 16
         row_height = self.font.get_height()
-        line_gap = 12
-        section_gap = 30
         btn_width, btn_height = 260, 54
+        section_gap = 30
+        value_gap = 16
+        line_gap = 12
 
         stats_block_width = label_col_width + value_gap + max(self.font.size(v)[0] for _, v, _ in rows)
         content_height = (
@@ -211,7 +211,6 @@ class GraphicsEngine:
         self.screen.blit(title_surf, title_surf.get_rect(midtop=(center_x, y)))
         y += title_surf.get_height() + section_gap
 
-        # left-align the whole label/value block, but center that block within the card
         block_left = center_x - stats_block_width // 2
         for label, value, color in rows:
             label_surf = self.font.render(label, True, color)
@@ -552,13 +551,13 @@ class GraphicsEngine:
         """
         pygame.quit()
     
-    def game_over(self):
-        """
-        Displays a "Game Over" message on the screen.
-        """
-        font = pygame.font.SysFont(None, 100)
-        text = font.render('Game Over', True, (255, 255, 0))
-        text_rect = text.get_rect(center=(self.window_size // 2, self.window_size // 2))
-        self.screen.blit(text, text_rect)
-        pygame.display.flip()
-        pygame.time.wait(500)
+    # def game_over(self):
+    #     """
+    #     Displays a "Game Over" message on the screen.
+    #     """
+    #     font = pygame.font.SysFont(None, 100)
+    #     text = font.render('Game Over', True, (255, 255, 0))
+    #     text_rect = text.get_rect(center=(self.window_size // 2, self.window_size // 2))
+    #     self.screen.blit(text, text_rect)
+    #     pygame.display.flip()
+    #     pygame.time.wait(500)

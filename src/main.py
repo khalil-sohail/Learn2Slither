@@ -48,9 +48,6 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
 
         state = next_state
 
-        # if GLOBAL_CONFIG.get('mode') == "play" and is_dead:
-        #     current_state = gfx.game_over()
-
         if current_state in [AppState.PLAYING, AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
             board_score, green_apple_eaten, red_apple_eaten = env.board.get_board_statistics()
             current_state = gfx.render_user_game_frame(
