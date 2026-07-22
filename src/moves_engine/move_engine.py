@@ -14,6 +14,8 @@
 # all moves will be validated before being applied to the board state, and if the move is invalid, the game will end.
 # all moves will be recived from the Gymnasium environment, and the moves will be applied to the board state, and the board state will be updated accordingly.
 
+from collections import deque
+
 from app_config.config import GLOBAL_CONFIG
 from constants import Action, Entity
 
@@ -27,7 +29,6 @@ class MovesEngine:
         Initializes the MovesEngine with the specified board size.
         :param size: The size of the board (number of cells in one dimension).
         """
-        self.size = GLOBAL_CONFIG.get('board_size')
 
     def get_next_position(self, head_index, action):
         """
@@ -36,21 +37,21 @@ class MovesEngine:
         :param action: The action to be taken (Action.UP: Up, Action.DOWN: Down, Action.LEFT: Left, Action.RIGHT: Right).
         :return: The next index after applying the action.
         """
-        row = head_index // self.size
-        col = head_index % self.size
+        row = head_index // GLOBAL_CONFIG.get('board_size')
+        col = head_index % GLOBAL_CONFIG.get('board_size')
 
-        if action == Action.UP:  # Move up
-            row = (row - 1) % self.size
-        elif action == Action.DOWN:  # Move down
-            row = (row + 1) % self.size
-        elif action == Action.LEFT:  # Move left
-            col = (col - 1) % self.size
-        elif action == Action.RIGHT:  # Move right
-            col = (col + 1) % self.size
+        if action == Action.UP:
+            row = (row - 1) % GLOBAL_CONFIG.get('board_size')
+        elif action == Action.DOWN:
+            row = (row + 1) % GLOBAL_CONFIG.get('board_size')
+        elif action == Action.LEFT:
+            col = (col - 1) % GLOBAL_CONFIG.get('board_size')
+        elif action == Action.RIGHT:
+            col = (col + 1) % GLOBAL_CONFIG.get('board_size')
 
-        return row * self.size + col
+        return row * GLOBAL_CONFIG.get('board_size') + col
 
-    def check_wall_body_collision(self, next_index, board_array):
+    def check_wall_body_collision(self, next_index: int, board_array: list):
         """
         Checks if the next_index collides with the wall or the snake's body.
         :param next_index: The index to check for collision.
@@ -61,18 +62,17 @@ class MovesEngine:
             return True
 
         destination_value = board_array[next_index]
-        
         if destination_value == Entity.WALL or destination_value == Entity.SNAKE_BODY:
             return True
         return False
 
-    def check_apple_collision(self, apple_index, next_index):
+    def check_apple_collision(self, apple_indexs: deque, next_index: int):
         """
         Checks if the next_index collides with an apple.
-        :param apple_index: The index of the apple to check for collision.
+        :param apple_indexs: A deque of indices of apples on the board.
         :param next_index: The index to check for collision.
         :return: True if the apple is eaten, False otherwise.
         """
-        if apple_index is not None and next_index == apple_index:
+        if apple_indexs is not None and next_index in apple_indexs:
             return True
         return False

@@ -21,14 +21,22 @@ def get_input(current_action):
                 return Action.LEFT
             elif event.key == pygame.K_RIGHT:
                 return Action.RIGHT
-                
+            elif event.key == pygame.K_PLUS or event.key == pygame.K_KP_PLUS:
+                fps = GLOBAL_CONFIG.get('fps_cap') + 5
+                fps = min(fps, 1000)
+                GLOBAL_CONFIG.update('fps_cap', fps)
+            elif event.key == pygame.K_MINUS or event.key == pygame.K_KP_MINUS:
+                fps = GLOBAL_CONFIG.get('fps_cap') - 5
+                fps = max(fps, 1)
+                GLOBAL_CONFIG.update('fps_cap', fps)
+
     return current_action
 
 def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, current_state: AppState):
     state, _ = env.reset()
     action = Action.RIGHT
 
-    while True:
+    while current_state in [AppState.PLAYING, AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
         action = get_input(action) 
         if current_state in [AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
             action = agent.select_action(state)
@@ -40,14 +48,23 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
 
         state = next_state
 
-        if GLOBAL_CONFIG.get('mode') == "play" and is_dead:
-            gfx.game_over()
-            break
+        # if GLOBAL_CONFIG.get('mode') == "play" and is_dead:
+        #     current_state = gfx.game_over()
 
-        if current_state in [AppState.PLAYING, AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION] and not is_dead:
-            gfx.render_user_game_frame(state, action, tail_direction)
+        if current_state in [AppState.PLAYING, AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
+            board_score, green_apple_eaten, red_apple_eaten = env.board.get_board_statistics()
+            current_state = gfx.render_user_game_frame(
+                state,
+                action,
+                tail_direction,
+                is_dead,
+                current_state,
+                board_score,
+                green_apple_eaten,
+                red_apple_eaten
+            )
         elif current_state in [AppState.TRAIN]:
-            gfx.render_agent_train()
+            current_state = gfx.render_agent_train()
     
     return AppState.LOBBY
 

@@ -20,6 +20,8 @@ import numpy as np
 import pygame
 import os
 
+from moves_engine.move_engine import MovesEngine
+
 class GraphicsEngine:
     def __init__(self, window_size: int):
         """
@@ -101,43 +103,216 @@ class GraphicsEngine:
         """
         self.textures = self._load_textures()
 
-    def render_user_game_frame(self, board_array: np.ndarray, head_direction: Textures, tail_direction: Textures):
+    def render_live_results_statistics(
+            self,
+            score: int = 0,
+            green_apple_eaten: int = 0,
+            red_apple_eaten: int = 0
+        ):
+        """
+        Renders a small HUD panel with score, green/red apples eaten, and live FPS,
+        with values aligned in a column regardless of label length.
+        """
+        live_fps = int(self.clock.get_fps())
+
+        padding = 14
+        line_gap = 8
+        value_gap = 14
+        line_height = self.font.get_height() + line_gap
+
+        rows = [
+            ("Score:", str(score), (255, 255, 255)),
+            ("Green Apples:", str(green_apple_eaten), (80, 255, 120)),
+            ("Red Apples:", str(red_apple_eaten), (255, 90, 90)),
+            ("FPS:", str(live_fps), (170, 170, 180)),
+        ]
+
+        dot_col_width = 16
+        label_col_width = max(self.font.size(label)[0] for label, _, _ in rows)
+        value_col_x = padding + dot_col_width + label_col_width + value_gap
+
+        hud_width = value_col_x + max(self.font.size(value)[0] for _, value, _ in rows) + padding
+        hud_height = line_height * len(rows) - line_gap + padding * 2
+
+        hud_surface = pygame.Surface((hud_width, hud_height), pygame.SRCALPHA)
+        pygame.draw.rect(hud_surface, (15, 15, 20, 150), hud_surface.get_rect(), border_radius=10)
+        pygame.draw.rect(hud_surface, (255, 255, 255, 40), hud_surface.get_rect(), width=1, border_radius=10)
+
+        for i, (label, value, color) in enumerate(rows):
+            row_y = padding + i * line_height
+
+            dot_center = (padding + 4, row_y + self.font.get_height() // 2)
+            pygame.draw.circle(hud_surface, color, dot_center, 4)
+
+            label_surf = self.font.render(label, True, color)
+            hud_surface.blit(label_surf, (padding + dot_col_width, row_y))
+
+            value_surf = self.font.render(value, True, color)
+            hud_surface.blit(value_surf, (value_col_x, row_y))
+
+        self.screen.blit(hud_surface, (10, 10))
+
+
+    def render_game_results_statistics(
+            self,
+            score: int = 0,
+            green_apple_eaten: int = 0,
+            red_apple_eaten: int = 0
+        ):
+        """
+        Renders the after-game results screen inside a centered card, with a
+        "Return to Lobby" button. Blocks the game loop until the user clicks
+        the button or presses Esc.
+        """
+        overlay = pygame.Surface((self.window_size, self.window_size), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 190))
+        self.screen.blit(overlay, (0, 0))
+
+        center_x = self.window_size // 2
+        center_y = self.window_size // 2
+
+        title_surf = self.font.render("SIMULATION TERMINATED", True, (255, 70, 70))
+        scale = 1.6
+        title_surf = pygame.transform.smoothscale(
+            title_surf,
+            (int(title_surf.get_width() * scale), int(title_surf.get_height() * scale))
+        )
+
+        rows = [
+            ("Final Score:", str(score), (255, 255, 255)),
+            ("Green Apples Collected:", str(green_apple_eaten), (80, 255, 120)),
+            ("Red Apples Penalties:", str(red_apple_eaten), (255, 100, 100)),
+        ]
+        label_col_width = max(self.font.size(label)[0] for label, _, _ in rows)
+        value_gap = 16
+        row_height = self.font.get_height()
+        line_gap = 12
+        section_gap = 30
+        btn_width, btn_height = 260, 54
+
+        stats_block_width = label_col_width + value_gap + max(self.font.size(v)[0] for _, v, _ in rows)
+        content_height = (
+            title_surf.get_height() + section_gap
+            + row_height * len(rows) + line_gap * (len(rows) - 1)
+            + section_gap + btn_height
+        )
+        content_width = max(title_surf.get_width(), stats_block_width, btn_width)
+
+        card_padding = 40
+        card_rect = pygame.Rect(0, 0, content_width + card_padding * 2, content_height + card_padding * 2)
+        card_rect.center = (center_x, center_y)
+
+        card_surface = pygame.Surface(card_rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(card_surface, (25, 25, 30, 230), card_surface.get_rect(), border_radius=16)
+        pygame.draw.rect(card_surface, (255, 255, 255, 35), card_surface.get_rect(), width=1, border_radius=16)
+        self.screen.blit(card_surface, card_rect.topleft)
+
+        y = card_rect.top + card_padding
+        self.screen.blit(title_surf, title_surf.get_rect(midtop=(center_x, y)))
+        y += title_surf.get_height() + section_gap
+
+        # left-align the whole label/value block, but center that block within the card
+        block_left = center_x - stats_block_width // 2
+        for label, value, color in rows:
+            label_surf = self.font.render(label, True, color)
+            value_surf = self.font.render(value, True, color)
+            self.screen.blit(label_surf, (block_left, y))
+            self.screen.blit(value_surf, (block_left + label_col_width + value_gap, y))
+            y += row_height + line_gap
+        y += section_gap - line_gap
+
+        btn_rect = pygame.Rect(0, 0, btn_width, btn_height)
+        btn_rect.midtop = (center_x, y)
+        btn_normal = (50, 50, 55)
+        btn_hover = (90, 100, 200)
+
+        waiting = True
+        while waiting:
+            mouse_pos = pygame.mouse.get_pos()
+            hovering = btn_rect.collidepoint(mouse_pos)
+
+            pygame.draw.rect(self.screen, btn_hover if hovering else btn_normal, btn_rect, border_radius=8)
+            pygame.draw.rect(self.screen, (255, 255, 255), btn_rect, width=2, border_radius=8)
+
+            btn_text = self.font.render("RETURN TO LOBBY", True, (255, 255, 255))
+            self.screen.blit(btn_text, btn_text.get_rect(center=btn_rect.center))
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if hovering:
+                        return AppState.LOBBY
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    return AppState.LOBBY
+
+            pygame.display.flip()
+            self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
+
+    def render_user_game_frame(
+            self,
+            board_array: np.ndarray,
+            head_direction: Textures,
+            tail_direction: Textures,
+            is_dead: bool,
+            current_state: AppState,
+            score: int = 0,
+            green_apple_eaten: int = 0,
+            red_apple_eaten: int = 0
+        ):
         """
         Renders the current board state to the display surface.
         :param board_array: A 1D NumPy array representing the current board state.
         :param head_direction: The direction the snake's head is facing.
         :param tail_direction: The direction the snake's tail is facing.
+        :param is_dead: A boolean indicating whether the snake is dead.
+        :param current_state: The current state of the application.
         """
-        self.screen.fill((0, 0, 0))
-        if self.textures.get(Textures.GAME_BACKGROUND):
-            self.screen.blit(self.textures[Textures.GAME_BACKGROUND], (0, 0))
+        if is_dead:
+            return self.render_game_results_statistics(
+                score=score,
+                green_apple_eaten=green_apple_eaten,
+                red_apple_eaten=red_apple_eaten
+            )
+        else:
+            self.screen.fill((0, 0, 0))
+            if self.textures.get(Textures.GAME_BACKGROUND):
+                self.screen.blit(self.textures[Textures.GAME_BACKGROUND], (0, 0))
 
 
-        current_time = pygame.time.get_ticks()
-        animation_cycle = current_time % 1000
-        frame_index = 1 if animation_cycle > 600 else 0
-        for index, value in enumerate(board_array):
-            row = index // GLOBAL_CONFIG.get('board_size')
-            col = index % GLOBAL_CONFIG.get('board_size')
-            x = col * self.cell_size
-            y = row * self.cell_size
+            current_time = pygame.time.get_ticks()
+            animation_cycle = current_time % 1000
+            frame_index = 1 if animation_cycle > 600 else 0
+            for index, value in enumerate(board_array):
+                row = index // GLOBAL_CONFIG.get('board_size')
+                col = index % GLOBAL_CONFIG.get('board_size')
+                x = col * self.cell_size
+                y = row * self.cell_size
 
-            if value == Entity.SNAKE_HEAD:
-                texture = self.textures.get(head_direction)[frame_index]
-            elif value == Entity.SNAKE_TAIL:
-                texture = self.textures.get(tail_direction)
-            else:
-                texture = self.textures.get(value)
-            
-            if value != Entity.EMPTY:
-                if texture:
-                    self.screen.blit(texture, (x, y))
+                if value == Entity.SNAKE_HEAD:
+                    texture = self.textures.get(head_direction)[frame_index]
+                elif value == Entity.SNAKE_TAIL:
+                    texture = self.textures.get(tail_direction)
                 else:
-                    pygame.draw.rect(self.screen, (255, 0, 255), (x, y, self.cell_size, self.cell_size))
+                    texture = self.textures.get(value)
+                
+                if value != Entity.EMPTY:
+                    if texture:
+                        self.screen.blit(texture, (x, y))
+                    else:
+                        pygame.draw.rect(self.screen, (255, 0, 255), (x, y, self.cell_size, self.cell_size))
 
-        pygame.display.flip()
-        self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
-    
+            self.render_live_results_statistics(
+                score=score,
+                green_apple_eaten=green_apple_eaten,
+                red_apple_eaten=red_apple_eaten
+            )
+            pygame.display.flip()
+            self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
+
+        return current_state
+
     def render_agent_train(self):
         pass
 

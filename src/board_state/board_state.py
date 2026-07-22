@@ -62,8 +62,11 @@ class BoardState:
         self.size = GLOBAL_CONFIG.get('board_size')
         self.board = np.zeros((self.size*self.size), dtype=int)
         self.body = deque()
-        self.red_apple = None
-        self.green_apple = None
+        self.red_apple = deque()
+        self.green_apple = deque()
+        self.red_apple_eaten = 0
+        self.green_apple_eaten = 0
+        self.board_score = 0
         self.head_index = None
         self.tail_direction = Textures.SNAKE_TAIL_LEFT
 
@@ -74,8 +77,11 @@ class BoardState:
         self.size = GLOBAL_CONFIG.get('board_size')
         self.board = np.zeros((self.size*self.size), dtype=int)
         self.body.clear()
-        self.red_apple = None
-        self.green_apple = None
+        self.red_apple.clear()
+        self.green_apple.clear()
+        self.red_apple_eaten = 0
+        self.green_apple_eaten = 0
+        self.board_score = 0
         self.head_index = None
         self.tail_direction = Textures.SNAKE_TAIL_LEFT
 
@@ -90,6 +96,11 @@ class BoardState:
         self.head_index = (self.size*self.size // 2) - self.size // 2
 
         self.spawn_apple(Entity.RED_APPLE)
+        self.spawn_apple(Entity.RED_APPLE)
+        self.spawn_apple(Entity.RED_APPLE)
+        self.spawn_apple(Entity.RED_APPLE)
+        self.spawn_apple(Entity.GREEN_APPLE)
+        self.spawn_apple(Entity.GREEN_APPLE)
         self.spawn_apple(Entity.GREEN_APPLE)
         self.spawn_apple(Entity.GREEN_APPLE)
 
@@ -101,27 +112,30 @@ class BoardState:
         ate_apple = self.board[next_index]
 
         if self.body:
-            current_head_index = self.body[-1]
-            self.board[current_head_index] = Entity.SNAKE_BODY
+            self.board[self.body[-1]] = Entity.SNAKE_BODY
+
         self.body.append(next_index)
         self.board[next_index] = Entity.SNAKE_HEAD
+        tail_moves = 1
 
         if ate_apple == Entity.RED_APPLE:
-            self.red_apple = None
+            self.red_apple.popleft()
             self.spawn_apple(Entity.RED_APPLE)
-            tail_index = self.body.popleft() ### need a better way for that
-            self.board[tail_index] = Entity.EMPTY
-            tail_index = self.body.popleft()
-            self.board[tail_index] = Entity.EMPTY
+            self.red_apple_eaten += 1
+            self.board_score -= 1 if self.board_score > 0 else 0
+            tail_moves += 1
         elif ate_apple == Entity.GREEN_APPLE:
-            self.green_apple = None
+            self.green_apple.popleft()
             self.spawn_apple(Entity.GREEN_APPLE)
-        else:
-            tail_index = self.body.popleft()
-            self.board[tail_index] = Entity.EMPTY
+            self.green_apple_eaten += 1
+            self.board_score += 1
+            tail_moves -= 1
+
+        for _ in range(tail_moves):
+            self.board[self.body.popleft()] = Entity.EMPTY
 
         self.head_index = next_index
-        if self.body and len(self.body) > 1:
+        if len(self.body) >= 2:
             self.board[self.body[0]] = Entity.SNAKE_TAIL
 
     def spawn_apple(self, color: Entity):
@@ -133,15 +147,22 @@ class BoardState:
             random_index = np.random.choice(random_empty_indices)
             self.board[random_index] = color
             if color == Entity.RED_APPLE:
-                self.red_apple = random_index
+                self.red_apple.append(random_index)
             elif color == Entity.GREEN_APPLE:
-                self.green_apple = random_index
+                self.green_apple.append(random_index)
 
     def get_board_array(self):
         """
         Returns a copy of the current board state as a 1D NumPy array."""
         return self.board.copy()
-    
+
+    def get_board_statistics(self):
+        """
+        Returns the count of red and green apples eaten.
+        :return: A tuple containing the count of red and green apples eaten.
+        """
+        return self.board_score, self.green_apple_eaten, self.red_apple_eaten
+
     def get_tail_direction(self, front_index: int, behind_index: int):
         difference = front_index - behind_index
         

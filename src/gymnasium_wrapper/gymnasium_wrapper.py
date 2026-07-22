@@ -8,12 +8,14 @@
 # 2 - move left
 # 3 - move right
 
-import gymnasium as gym
-from gymnasium import spaces
-import numpy as np
+
 from app_config.config import GLOBAL_CONFIG
-from board_state import BoardState
 from moves_engine import MovesEngine
+from board_state import BoardState
+from constants import Entity
+from gymnasium import spaces
+import gymnasium as gym
+import numpy as np
 
 class GymnasiumWrapper(gym.Env):
     """A Gymnasium wrapper for the Snake game."""
@@ -23,7 +25,6 @@ class GymnasiumWrapper(gym.Env):
         Initializes the Gymnasium environment for the Snake game.
         :param board_size: The size of the board (number of cells in one dimension).
         """
-        # self.board_size = GLOBAL_CONFIG.get('board_size')
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(low=0, high=4, shape=(GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size'),), dtype=np.int32)
         self.board = BoardState()
@@ -35,8 +36,7 @@ class GymnasiumWrapper(gym.Env):
         :return: A tuple containing the initial observation and an empty info dictionary.
         """
         self.observation_space = spaces.Box(low=0, high=4, shape=(GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size'),), dtype=np.int32)
-        self.board = BoardState()
-        self.physics = MovesEngine()
+        # physics = MovesEngine() # no need for now
         self.board.reset_game()
         return self.board.get_board_array(), {}
 
@@ -55,7 +55,6 @@ class GymnasiumWrapper(gym.Env):
             self.board.move_snake(next_index)
             if ate_red_apple and len(self.board.body) <= 0:
                 is_dead = True
-
 
         reward = self._calculate_reward(is_dead, ate_red_apple, ate_green_apple)
         truncated = False
