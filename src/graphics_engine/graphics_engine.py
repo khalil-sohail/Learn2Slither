@@ -14,7 +14,7 @@
 
 import sys
 
-from constants import AppState, Entity, Textures
+from constants import AppState, Entity
 from app_config.config import GLOBAL_CONFIG
 import numpy as np
 import pygame
@@ -67,33 +67,33 @@ class GraphicsEngine:
                 print(f"Warning: {path} not found.")
                 sys.exit(1)
 
-        textures[Textures.LOBBY_BACKGROUND] = load_sprite("lobby_background.png", full_scale=True)
-        textures[Textures.GAME_BACKGROUND] = load_sprite("game_background.jpg", full_scale=True, darken_factor=160)
-        textures[Textures.GREEN_APPLE] = load_sprite("green_apple.png")
-        textures[Textures.SNAKE_BODY] = load_sprite("snake_body.png")
-        textures[Textures.RED_APPLE] = load_sprite("red_apple.png")
-        textures[Textures.WALL] = load_sprite("wall.png")
+        textures[Entity.LOBBY_BACKGROUND] = load_sprite("lobby_background.png", full_scale=True)
+        textures[Entity.GAME_BACKGROUND] = load_sprite("game_background.jpg", full_scale=True, darken_factor=160)
+        textures[Entity.GREEN_APPLE] = load_sprite("green_apple.png")
+        textures[Entity.SNAKE_BODY] = load_sprite("snake_body.png")
+        textures[Entity.RED_APPLE] = load_sprite("red_apple.png")
+        textures[Entity.WALL] = load_sprite("wall.png")
 
         base_head_up = load_sprite("snake_head.png")
         tongue_head_up = load_sprite("snake_head_tongue.png")
-        textures[Textures.SNAKE_HEAD_UP] = [base_head_up, tongue_head_up]
-        textures[Textures.SNAKE_HEAD_DOWN] = [
+        textures[Entity.SNAKE_HEAD_UP] = [base_head_up, tongue_head_up]
+        textures[Entity.SNAKE_HEAD_DOWN] = [
             pygame.transform.rotate(base_head_up, 180),
             pygame.transform.rotate(tongue_head_up, 180)
         ]
-        textures[Textures.SNAKE_HEAD_LEFT] = [
+        textures[Entity.SNAKE_HEAD_LEFT] = [
             pygame.transform.rotate(base_head_up, 90),
             pygame.transform.rotate(tongue_head_up, 90)
         ]
-        textures[Textures.SNAKE_HEAD_RIGHT] = [
+        textures[Entity.SNAKE_HEAD_RIGHT] = [
             pygame.transform.rotate(base_head_up, -90),
             pygame.transform.rotate(tongue_head_up, -90)
         ]
 
-        textures[Textures.SNAKE_TAIL_UP] = load_sprite("snake_tail.png")
-        textures[Textures.SNAKE_TAIL_LEFT] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], 90)
-        textures[Textures.SNAKE_TAIL_RIGHT] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], -90)
-        textures[Textures.SNAKE_TAIL_DOWN] = pygame.transform.rotate(textures[Textures.SNAKE_TAIL_UP], 180)
+        textures[Entity.SNAKE_TAIL_UP] = load_sprite("snake_tail.png")
+        textures[Entity.SNAKE_TAIL_LEFT] = pygame.transform.rotate(textures[Entity.SNAKE_TAIL_UP], 90)
+        textures[Entity.SNAKE_TAIL_RIGHT] = pygame.transform.rotate(textures[Entity.SNAKE_TAIL_UP], -90)
+        textures[Entity.SNAKE_TAIL_DOWN] = pygame.transform.rotate(textures[Entity.SNAKE_TAIL_UP], 180)
         
         return textures
 
@@ -203,7 +203,7 @@ class GraphicsEngine:
         card_rect.center = (center_x, center_y)
 
         card_surface = pygame.Surface(card_rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(card_surface, (25, 25, 30, 230), card_surface.get_rect(), border_radius=16)
+        pygame.draw.rect(card_surface, (25, 25, 30, 120), card_surface.get_rect(), border_radius=16)
         pygame.draw.rect(card_surface, (255, 255, 255, 35), card_surface.get_rect(), width=1, border_radius=16)
         self.screen.blit(card_surface, card_rect.topleft)
 
@@ -252,8 +252,8 @@ class GraphicsEngine:
     def render_user_game_frame(
             self,
             board_array: np.ndarray,
-            head_direction: Textures,
-            tail_direction: Textures,
+            # head_direction: Entity,
+            # tail_direction: Entity,
             is_dead: bool,
             current_state: AppState,
             score: int = 0,
@@ -276,8 +276,8 @@ class GraphicsEngine:
             )
         else:
             self.screen.fill((0, 0, 0))
-            if self.textures.get(Textures.GAME_BACKGROUND):
-                self.screen.blit(self.textures[Textures.GAME_BACKGROUND], (0, 0))
+            if self.textures.get(Entity.GAME_BACKGROUND):
+                self.screen.blit(self.textures[Entity.GAME_BACKGROUND], (0, 0))
 
 
             current_time = pygame.time.get_ticks()
@@ -289,10 +289,20 @@ class GraphicsEngine:
                 x = col * self.cell_size
                 y = row * self.cell_size
 
-                if value == Entity.SNAKE_HEAD:
-                    texture = self.textures.get(head_direction)[frame_index]
-                elif value == Entity.SNAKE_TAIL:
-                    texture = self.textures.get(tail_direction)
+                if value in (
+                    Entity.SNAKE_HEAD_UP, 
+                    Entity.SNAKE_HEAD_DOWN, 
+                    Entity.SNAKE_HEAD_LEFT, 
+                    Entity.SNAKE_HEAD_RIGHT
+                ):
+                    texture = self.textures.get(value)[frame_index]
+                elif value in (
+                    Entity.SNAKE_TAIL_UP, 
+                    Entity.SNAKE_TAIL_DOWN, 
+                    Entity.SNAKE_TAIL_LEFT, 
+                    Entity.SNAKE_TAIL_RIGHT
+                ):
+                    texture = self.textures.get(value)
                 else:
                     texture = self.textures.get(value)
                 
@@ -317,8 +327,8 @@ class GraphicsEngine:
 
     def render_lobby(self):
         pygame.draw.rect(self.screen, (0, 0, 0), (0, 0, self.window_size, self.window_size))
-        if self.textures.get(Textures.LOBBY_BACKGROUND):
-            self.screen.blit(self.textures[Textures.LOBBY_BACKGROUND], (0, 0))
+        if self.textures.get(Entity.LOBBY_BACKGROUND):
+            self.screen.blit(self.textures[Entity.LOBBY_BACKGROUND], (0, 0))
             
         self.draw_text("Learn2Slither Engine", (0, 255, 100), self.window_size // 2, 100)
         
@@ -345,7 +355,7 @@ class GraphicsEngine:
                 sys.exit()
                 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if watch_train_btn.collidepoint(event.pos):
+                if train_btn.collidepoint(event.pos):
                     GLOBAL_CONFIG.update('mode', "train")
                     return AppState.TRAIN
 
@@ -377,8 +387,8 @@ class GraphicsEngine:
         :return: The next AppState based on user interaction.
         """        
         pygame.draw.rect(self.screen, (0, 0, 0), (0, 0, self.window_size, self.window_size))
-        if self.textures.get(Textures.LOBBY_BACKGROUND):
-            self.screen.blit(self.textures[Textures.LOBBY_BACKGROUND], (0, 0))
+        if self.textures.get(Entity.LOBBY_BACKGROUND):
+            self.screen.blit(self.textures[Entity.LOBBY_BACKGROUND], (0, 0))
 
         if not hasattr(self, 'active_input'):
             self.active_input = None
@@ -550,14 +560,3 @@ class GraphicsEngine:
         Safely closes the graphics engine and quits pygame.
         """
         pygame.quit()
-    
-    # def game_over(self):
-    #     """
-    #     Displays a "Game Over" message on the screen.
-    #     """
-    #     font = pygame.font.SysFont(None, 100)
-    #     text = font.render('Game Over', True, (255, 255, 0))
-    #     text_rect = text.get_rect(center=(self.window_size // 2, self.window_size // 2))
-    #     self.screen.blit(text, text_rect)
-    #     pygame.display.flip()
-    #     pygame.time.wait(500)

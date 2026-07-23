@@ -12,16 +12,20 @@ def get_input(current_action):
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             pygame.quit()
             sys.exit()
-        elif GLOBAL_CONFIG.get('mode') == "play" and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
+            return current_action
+
+        if GLOBAL_CONFIG.get('mode') == "play" and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP or event.key == pygame.K_w:
                 return Action.UP
-            elif event.key == pygame.K_DOWN:
+            elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
                 return Action.DOWN
-            elif event.key == pygame.K_LEFT:
+            elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
                 return Action.LEFT
-            elif event.key == pygame.K_RIGHT:
+            elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                 return Action.RIGHT
-            elif event.key == pygame.K_PLUS or event.key == pygame.K_KP_PLUS:
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_PLUS or event.key == pygame.K_KP_PLUS:
                 fps = GLOBAL_CONFIG.get('fps_cap') + 5
                 fps = min(fps, 1000)
                 GLOBAL_CONFIG.update('fps_cap', fps)
@@ -39,10 +43,21 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
     while current_state in [AppState.PLAYING, AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
         action = get_input(action) 
         if current_state in [AppState.WATCH_TRAIN, AppState.WATCH_EXPLORATION_TRAIN, AppState.WATCH_EXPLOITATION]:
-            action = agent.select_action(state)
-        
-        next_state, reward, is_dead, truncated, info, tail_direction = env.step(action)
-        # print(f"Action: {action}, Reward: {reward}, is_dead: {is_dead}, Truncated: {truncated}, Info: {info}")
+            snake_vision = env.board.get_snake_vision_vector()
+            action = agent.get_action(snake_vision)
+            action = agent.get_test_action(state)
+            if GLOBAL_CONFIG.get('print_vision'):
+                if action is Action.UP:
+                    print("UP")
+                elif action is Action.DOWN:
+                    print("DOWN")
+                elif action is Action.LEFT:
+                    print("LEFT")
+                elif action is Action.RIGHT:
+                    print("\nRIGHT\n")
+
+        next_state, reward, is_dead, tail_direction = env.step(action)
+        # print(f"Action: {action}, Reward: {reward}, is_dead: {is_dead}.")
         if GLOBAL_CONFIG.get('mode') == "train":
             pass
 
@@ -52,8 +67,6 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
             board_score, green_apple_eaten, red_apple_eaten = env.board.get_board_statistics()
             current_state = gfx.render_user_game_frame(
                 state,
-                action,
-                tail_direction,
                 is_dead,
                 current_state,
                 board_score,
@@ -68,6 +81,8 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
 def main(argv):
     try:
         parseArguments(argv)
+        print("Configuration loaded successfully.")
+        print(GLOBAL_CONFIG.to_dict())
     except ValueError as e:
         print(f"Error: {e}")
 

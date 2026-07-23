@@ -28,7 +28,7 @@
 
 from collections import deque
 from app_config.config import GLOBAL_CONFIG
-from constants import Action, Entity, Textures
+from constants import Action, Entity
 
 import numpy as np
 
@@ -61,14 +61,14 @@ class BoardState:
         """
         self.size = GLOBAL_CONFIG.get('board_size')
         self.board = np.zeros((self.size*self.size), dtype=int)
-        self.body = deque()
-        self.red_apple = deque()
-        self.green_apple = deque()
+        self.body = deque()         # contains indices of the snake's body in the board
+        self.red_apple = deque()    # contains indices of the red apple in the board
+        self.green_apple = deque()  # contains indices of the green apple in the board
         self.red_apple_eaten = 0
         self.green_apple_eaten = 0
         self.board_score = 0
         self.head_index = None
-        self.tail_direction = Textures.SNAKE_TAIL_LEFT
+        self.tail_direction = Entity.SNAKE_TAIL_LEFT
 
     def reset_game(self):
         """
@@ -83,7 +83,7 @@ class BoardState:
         self.green_apple_eaten = 0
         self.board_score = 0
         self.head_index = None
-        self.tail_direction = Textures.SNAKE_TAIL_LEFT
+        self.tail_direction = Entity.SNAKE_TAIL_LEFT
 
         self.board.fill(Entity.EMPTY)
         self.board[:self.size] = Entity.WALL
@@ -110,7 +110,7 @@ class BoardState:
             self.board[self.body[-1]] = Entity.SNAKE_BODY
 
         self.body.append(next_index)
-        self.board[next_index] = Entity.SNAKE_HEAD
+        self.board[next_index] = self.get_head_direction(self.head_index, next_index)
         tail_moves = 1
 
         if ate_apple == Entity.RED_APPLE:
@@ -131,7 +131,7 @@ class BoardState:
 
         self.head_index = next_index
         if len(self.body) >= 2:
-            self.board[self.body[0]] = Entity.SNAKE_TAIL
+            self.board[self.body[0]] = self.get_tail_direction(self.body[0], self.body[1])
 
     def spawn_apple(self, color: Entity):
         """
@@ -140,10 +140,11 @@ class BoardState:
         random_empty_indices = np.where(self.board == Entity.EMPTY)[0]
         if random_empty_indices.size > 0:
             random_index = np.random.choice(random_empty_indices)
-            self.board[random_index] = color
             if color == Entity.RED_APPLE:
+                self.board[random_index] = Entity.RED_APPLE
                 self.red_apple.append(random_index)
             elif color == Entity.GREEN_APPLE:
+                self.board[random_index] = Entity.GREEN_APPLE
                 self.green_apple.append(random_index)
 
     def get_board_array(self):
@@ -162,17 +163,31 @@ class BoardState:
         difference = front_index - behind_index
         
         if difference == -self.size:
-            return Textures.SNAKE_TAIL_UP
+            return Entity.SNAKE_TAIL_UP
         elif difference == self.size:
-            return Textures.SNAKE_TAIL_DOWN
+            return Entity.SNAKE_TAIL_DOWN
         elif difference == -1:
-            return Textures.SNAKE_TAIL_LEFT
+            return Entity.SNAKE_TAIL_LEFT
         elif difference == 1:
-            return Textures.SNAKE_TAIL_RIGHT
+            return Entity.SNAKE_TAIL_RIGHT
             
-        return Textures.SNAKE_TAIL_LEFT
+        return Entity.SNAKE_TAIL_LEFT
 
-    def get_vision_vector(self):
+    def get_head_direction(self, front_index: int, behind_index: int):
+        difference = front_index - behind_index
+        
+        if difference == self.size:
+            return Entity.SNAKE_HEAD_UP
+        elif difference == -self.size:
+            return Entity.SNAKE_HEAD_DOWN
+        elif difference == 1:
+            return Entity.SNAKE_HEAD_LEFT
+        elif difference == -1:
+            return Entity.SNAKE_HEAD_RIGHT
+            
+        return Entity.SNAKE_HEAD_LEFT
+
+    def get_snake_vision_vector(self):
         """
         Calculates and returns the 16-value float32 NumPy array representing what the snake sees in its current state.
         The vision vector consists of 4 features for each of the 4 cardinal directions (North, East, South, West):
@@ -182,12 +197,71 @@ class BoardState:
             - Distance to Nearest Red Apple (v=1/d, or 0 if none)
         :return: A 16-value float32 NumPy array representing the snake's vision.
         """
-        pass
+        vision_vector = np.zeros(16, dtype=np.float32)
+        directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]  # North, East, South, West
+        head_row = self.head_index // self.size
+        head_col = self.head_index % self.size
+        
+        rays_chars = {
+            (-1, 0): [],
+            (0, 1): [],
+            (1, 0): [],
+            (0, -1): []
+        }
 
-    def get_terminal_vision_string(self):
-        """
-        Calculates and returns a strictly formatted plus-shape string representation of the snake's vision for terminal display.
-        The vision string will visually represent the snake's vision in a plus-shape format, with the snake's head at the center and the distances to walls, body segments, and apples in the four cardinal directions.
-        :return: A string representing the snake's vision in a plus-shape format for terminal display.
-        """
-        pass
+        for i, (dr, dc) in enumerate(directions):
+            distance_to_wall = 0
+            distance_to_body = 0
+            distance_to_green_apple = 0
+            distance_to_red_apple = 0
+
+            row, col = head_row, head_col
+            while True:
+                row += dr
+                col += dc
+                distance_to_wall += 1
+
+                if row < 0 or row >= self.size or col < 0 or col >= self.size:
+                    rays_chars[(dr, dc)].append("W")
+                    break
+
+                index = row * self.size + col
+                cell_value = self.board[index]
+
+                if cell_value in (Entity.SNAKE_BODY, Entity.SNAKE_TAIL_UP, Entity.SNAKE_TAIL_DOWN, Entity.SNAKE_TAIL_LEFT, Entity.SNAKE_TAIL_RIGHT):
+                    rays_chars[(dr, dc)].append("S")
+                    if distance_to_body == 0:
+                        distance_to_body = distance_to_wall
+                elif cell_value == Entity.GREEN_APPLE:
+                    rays_chars[(dr, dc)].append("G")
+                    if distance_to_green_apple == 0:
+                        distance_to_green_apple = distance_to_wall
+                elif cell_value == Entity.RED_APPLE:
+                    rays_chars[(dr, dc)].append("R")
+                    if distance_to_red_apple == 0:
+                        distance_to_red_apple = distance_to_wall
+                elif cell_value == Entity.WALL:
+                    rays_chars[(dr, dc)].append("W")
+                    break
+                else:
+                    rays_chars[(dr, dc)].append("0")
+
+            vision_vector[i * 4] = 1.0 / distance_to_wall if distance_to_wall > 0 else 0.0
+            vision_vector[i * 4 + 1] = 1.0 / distance_to_body if distance_to_body > 0 else 0.0
+            vision_vector[i * 4 + 2] = 1.0 / distance_to_green_apple if distance_to_green_apple > 0 else 0.0
+            vision_vector[i * 4 + 3] = 1.0 / distance_to_red_apple if distance_to_red_apple > 0 else 0.0
+
+        if GLOBAL_CONFIG.get("print_vision"):
+            west_str = "".join(reversed(rays_chars[(0, -1)]))
+            east_str = "".join(rays_chars[(0, 1)])
+            padding = " " * len(west_str)
+        
+            print() 
+            for char in reversed(rays_chars[(-1, 0)]):
+                print(padding + char)
+            print(west_str + "H" + east_str)
+            for char in rays_chars[(1, 0)]:
+                print(padding + char)
+            print() 
+
+        return vision_vector

@@ -6,7 +6,7 @@ class Action(IntEnum):
     LEFT = 2
     RIGHT = 3
 
-class Textures(IntEnum):
+class Entity(IntEnum):
     SNAKE_HEAD_UP = 0
     SNAKE_HEAD_DOWN = 1
     SNAKE_HEAD_LEFT = 2
@@ -22,15 +22,6 @@ class Textures(IntEnum):
     WALL = 12
     LOBBY_BACKGROUND = 13
     GAME_BACKGROUND = 14
-
-class Entity(IntEnum):
-    EMPTY = Textures.EMPTY
-    SNAKE_HEAD = Textures.SNAKE_HEAD_UP or Textures.SNAKE_HEAD_DOWN or Textures.SNAKE_HEAD_LEFT or Textures.SNAKE_HEAD_RIGHT
-    SNAKE_BODY = Textures.SNAKE_BODY
-    SNAKE_TAIL = Textures.SNAKE_TAIL_UP or Textures.SNAKE_TAIL_DOWN or Textures.SNAKE_TAIL_LEFT or Textures.SNAKE_TAIL_RIGHT
-    RED_APPLE = Textures.RED_APPLE
-    GREEN_APPLE = Textures.GREEN_APPLE
-    WALL = Textures.WALL
 
 class AppState(IntEnum):
     LOBBY = 0

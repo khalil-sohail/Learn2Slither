@@ -1,3 +1,5 @@
+import os
+
 
 class Config:
     """
@@ -24,32 +26,109 @@ class Config:
         self.mode = "play"
         self.target_weights = None
         self.save_interval = 100
-    
+
+        # general configuration
+        self.print_vision = False
+
+        # expected input/types for each configuration parameter
+        self._expected_types = {
+            "board_size": int,
+            "fps_cap": int,
+            "reward_green_apple": float,
+            "reward_red_apple": float,
+            "reward_death": float,
+            "reward_step": float,
+            "learning_rate": float,
+            "gamma": float,
+            "epsilon_decay": float,
+            "memory_capacity": int,
+            "mode": str,
+            "target_weights": type(None),
+            "save_interval": int,
+            "print_vision": bool
+        }
+        self._expected_input = {
+            "board_size": {"min": 5, "max": 100},
+            "fps_cap": {"min": 1, "max": 1000},
+            "reward_green_apple": {"min": -10.0, "max": 10.0},
+            "reward_red_apple": {"min": -10.0, "max": 10.0},
+            "reward_death": {"min": -10.0, "max": 10.0},
+            "reward_step": {"min": -1.0, "max": 1.0},
+            "learning_rate": {"min": 0.0001, "max": 1.0},
+            "gamma": {"min": 0.0, "max": 1.0},
+            "epsilon_decay": {"min": 0.0, "max": 1.0},
+            "memory_capacity": {"min": 1000, "max": 1000000},
+            "mode": {"allowed": ["train", "play", "watch-train", "watch-exploration-train", "watch-exploitation"]},
+            "target_weights": {"allowed": [None, str]},
+            "save_interval": {"min": 1, "max": 10000},
+            "print_vision": {"allowed": [True, False]}
+        }
+
     def update(self, key, value):
         """
-        Updates the configuration, automatically casting the input to the correct data type.
-        Raises a ValueError if the conversion fails.
+        Updates the configuration, validating against expected types and constraints.
+        Raises a ValueError if conversion or boundary validation fails.
         """
-        if not hasattr(self, key):
+        if key not in self._expected_types:
             raise ValueError(f"Invalid configuration key: {key}")
 
-        current_value = getattr(self, key)
+        expected_type = self._expected_types[key]
+        validation_rules = self._expected_input[key]
 
-        if current_value is None:
-            if value == "" or str(value).lower() == "none":
+        if str(value).lower() in ["none", ""]:
+            if "allowed" in validation_rules and None in validation_rules["allowed"]:
                 setattr(self, key, None)
-            else:
-                setattr(self, key, str(value))
-            return
-
-        expected_type = type(current_value)
+                return
+            elif expected_type == type(None):
+                setattr(self, key, None)
+                return
 
         try:
-            casted_value = expected_type(value)
-            setattr(self, key, casted_value)
-        except ValueError:
-            raise ValueError(f"Invalid input: Expected a {expected_type.__name__}")
-    
+            if expected_type == bool:
+                if isinstance(value, str):
+                    if value.lower() in ["true", "1", "yes"]:
+                        casted_value = True
+                    elif value.lower() in ["false", "0", "no"]:
+                        casted_value = False
+                    else:
+                        raise ValueError(f"Invalid boolean string for '{key}': {value}")
+                else:
+                    casted_value = bool(value)
+            
+            elif expected_type == type(None) and "allowed" in validation_rules and str in validation_rules["allowed"]:
+                path = str(value)
+                if not os.path.exists(path):
+                    raise ValueError(f"File path does not exist: {path}")
+                casted_value = path
+            
+            else:
+                casted_value = expected_type(value)
+                
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid input type for '{key}'. Expected {expected_type.__name__}.")
+
+        if "min" in validation_rules and "max" in validation_rules:
+            if not (validation_rules["min"] <= casted_value <= validation_rules["max"]):
+                raise ValueError(
+                    f"Value for '{key}' out of bounds. "
+                    f"Must be between {validation_rules['min']} and {validation_rules['max']}."
+                )
+
+        if "allowed" in validation_rules:
+            is_valid = False
+            for allowed_item in validation_rules["allowed"]:
+                if isinstance(allowed_item, type) and isinstance(casted_value, allowed_item):
+                    is_valid = True
+                    break
+                elif casted_value == allowed_item:
+                    is_valid = True
+                    break
+            
+            if not is_valid:
+                raise ValueError(f"Invalid value for '{key}'. Allowed options: {validation_rules['allowed']}")
+
+        setattr(self, key, casted_value)
+
     def get(self, key):
         """
         Retrieves the value for a given configuration key.
@@ -81,7 +160,8 @@ class Config:
             "memory_capacity": self.memory_capacity,
             "mode": self.mode,
             "target_weights": self.target_weights,
-            "save_interval": self.save_interval
+            "save_interval": self.save_interval,
+            "print_vision": self.print_vision
         }
     
     def from_dict(self, config_dict):

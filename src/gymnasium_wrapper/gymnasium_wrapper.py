@@ -44,7 +44,7 @@ class GymnasiumWrapper(gym.Env):
         """
         Executes one time step within the environment based on the given action.
         :param action: The action to be taken (Action.UP: Up, Action.DOWN: Down, Action.LEFT: Left, Action.RIGHT: Right).
-        :return: A tuple containing the next observation, reward, terminated flag, truncated flag, and an info dictionary.
+        :return: A tuple containing the next observation, reward, terminated flag.
         """
         next_index = self.physics.get_next_position(self.board.head_index, action)
         is_dead = self.physics.check_wall_body_collision(next_index, self.board.get_board_array())
@@ -57,11 +57,11 @@ class GymnasiumWrapper(gym.Env):
                 is_dead = True
 
         reward = self._calculate_reward(is_dead, ate_red_apple, ate_green_apple)
-        truncated = False
-        info = {}
+        # truncated = False
+        # info = {}
         tail_direction = self.board.get_tail_direction(self.board.body[0], self.board.body[1]) if len(self.board.body) > 1 else None
         
-        return self.board.get_board_array(), reward, is_dead, truncated, info, tail_direction
+        return self.board.get_board_array(), reward, is_dead, tail_direction
 
     def _calculate_reward(self, is_dead: bool, ate_red_apple: bool, ate_green_apple: bool):
         """Calculates the reward for the current step."""

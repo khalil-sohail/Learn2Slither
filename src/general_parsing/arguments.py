@@ -46,7 +46,10 @@ def parseArguments(argv):
         
         # File I/O Flags
         "--weights": ("target_weights", str),
-        "--save-interval": ("save_interval", int)
+        "--save-interval": ("save_interval", int),
+
+        # General Configuration
+        "--print-vision": ("print_vision", str)
     }
 
     i = 0
@@ -73,6 +76,8 @@ def parseArguments(argv):
             print("Files:")
             print("  --weights         Path to .pt file to load")
             print("  --save-interval   Episodes between saving weights")
+            print("General Configuration:")
+            print("  --print-vision    Whether to print vision information (default: False)")
             return None
 
         elif arg in arg_map:
