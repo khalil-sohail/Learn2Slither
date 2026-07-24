@@ -91,7 +91,6 @@ class BoardState:
         self.board[::self.size] = Entity.WALL
         self.board[self.size - 1::self.size] = Entity.WALL
 
-        self.body.clear()
         self.body.append((self.size*self.size // 2) - self.size // 2)
         self.head_index = (self.size*self.size // 2) - self.size // 2
 
@@ -157,7 +156,12 @@ class BoardState:
         Returns the count of red and green apples eaten.
         :return: A tuple containing the count of red and green apples eaten.
         """
-        return self.board_score, self.green_apple_eaten, self.red_apple_eaten
+        return (
+            self.board_score,
+            self.green_apple_eaten,
+            self.red_apple_eaten,
+            self.board.copy()
+        )
 
     def get_tail_direction(self, front_index: int, behind_index: int):
         difference = front_index - behind_index

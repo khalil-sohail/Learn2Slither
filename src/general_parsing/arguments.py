@@ -12,8 +12,8 @@
 from app_config import GLOBAL_CONFIG
 
 def checkMode(mode):
-    """Check if the provided mode is valid."""
-    valid_modes = ["train", "play", "watch-train", "watch-exploration-train", "watch-exploitation"]
+    """modes: LOBBY, CONFIG, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"""
+    valid_modes = ["LOBBY", "CONFIG", "TRAIN", "HUMAN_PLAYING", "WATCH_TRAIN", "AGENT_PLAYING", "EXIT"]
     if mode not in valid_modes:
         raise ValueError(f"Invalid mode: {mode}. Valid modes are: {valid_modes}")
     return mode
@@ -32,6 +32,7 @@ def parseArguments(argv):
         "--fps": ("fps_cap", int),
         
         # Neural Network Flags
+        "-e": ("epoch", int),
         "--lr": ("learning_rate", float),
         "--gamma": ("gamma", float),
         "--epsilon": ("epsilon_decay", float),
@@ -60,7 +61,7 @@ def parseArguments(argv):
             print("Help requested. Displaying help information...")
             print("Usage: python main.py [options]")
             print("Environment Options:")
-            print("  -m, --mode        Mode ('train', 'play', 'watch-train', 'watch-exploration-train', 'watch-exploitation')")
+            print("  -m, --mode        Mode ('LOBBY', 'CONFIG', 'TRAIN', 'HUMAN_PLAYING', 'WATCH_TRAIN', 'AGENT_PLAYING', 'EXIT')")
             print("  -b, --board       Board size (e.g., 10, 20)")
             print("  -f, --fps         Frames per second limit")
             print("AI Hyperparameters:")
@@ -89,7 +90,7 @@ def parseArguments(argv):
             try:
                 GLOBAL_CONFIG.update(dict_key, cast_func(argv[i + 1]))
             except ValueError:
-                raise ValueError(f"Invalid type for {arg}. Expected {cast_func.__name__}.")
+                raise ValueError(f"Invalid type for {arg}. Expected {cast_func.__doc__}.")
                 
             i += 2
             continue

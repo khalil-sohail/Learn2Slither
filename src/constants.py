@@ -26,10 +26,9 @@ class Entity(IntEnum):
 class AppState(IntEnum):
     LOBBY = 0
     CONFIG = 1
-    PLAYING = 2
-    EXIT = 3
-    TRAIN = 4
-    WATCH_TRAIN = 5
-    WATCH_EXPLORATION_TRAIN = 6
-    WATCH_EXPLOITATION = 7
+    TRAIN = 2
+    HUMAN_PLAYING = 3
+    WATCH_TRAIN = 4
+    AGENT_PLAYING = 5
+    EXIT = 6
 

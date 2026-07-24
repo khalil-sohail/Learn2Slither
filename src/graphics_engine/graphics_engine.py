@@ -252,8 +252,6 @@ class GraphicsEngine:
     def render_user_game_frame(
             self,
             board_array: np.ndarray,
-            # head_direction: Entity,
-            # tail_direction: Entity,
             is_dead: bool,
             current_state: AppState,
             score: int = 0,
@@ -278,7 +276,6 @@ class GraphicsEngine:
             self.screen.fill((0, 0, 0))
             if self.textures.get(Entity.GAME_BACKGROUND):
                 self.screen.blit(self.textures[Entity.GAME_BACKGROUND], (0, 0))
-
 
             current_time = pygame.time.get_ticks()
             animation_cycle = current_time % 1000
@@ -333,49 +330,31 @@ class GraphicsEngine:
         self.draw_text("Learn2Slither Engine", (0, 255, 100), self.window_size // 2, 100)
         
         center_x = self.window_size // 2 - 175
-        train_btn = pygame.Rect(center_x, 200, 350, 50)
-        play_btn = pygame.Rect(center_x, 270, 350, 50)
-        watch_train_btn = pygame.Rect(center_x, 340, 350, 50)
-        watch_exploration_train_btn = pygame.Rect(center_x, 410, 350, 50)
-        watch_play_exploitation_btn = pygame.Rect(center_x, 480, 350, 50)
-        config_btn = pygame.Rect(center_x, 550, 350, 50)
+        play_btn = pygame.Rect(center_x, 200, 350, 50)
+        watch_train_btn = pygame.Rect(center_x, 270, 350, 50)
+        agent_play_btn = pygame.Rect(center_x, 340, 350, 50)
+        config_btn = pygame.Rect(center_x, 410, 350, 50)
         
         btn_normal = (50, 50, 50, 60)
         btn_hover = (100, 100, 200, 120)
         
-        self.draw_button(train_btn, "TRAIN AGENT", btn_normal, btn_hover)
-        self.draw_button(play_btn, "HUMAN OVERRIDE", btn_normal, btn_hover)
-        self.draw_button(watch_train_btn, "WATCH TRAINING", btn_normal, btn_hover)
-        self.draw_button(watch_exploration_train_btn, "RANDOM EXPLORATION", btn_normal, btn_hover)
-        self.draw_button(watch_play_exploitation_btn, "AGENT INFERENCE", btn_normal, btn_hover)
-        self.draw_button(config_btn, "ENGINE SETTINGS", btn_normal, btn_hover)
+        self.draw_button(play_btn, "HUMAN PLAYER", btn_normal, btn_hover)
+        self.draw_button(watch_train_btn, "WATCH AGENT TRAINING", btn_normal, btn_hover)
+        self.draw_button(agent_play_btn, "WATCH AGENT PLAYING", btn_normal, btn_hover)
+        self.draw_button(config_btn, "CONFIGURATION", btn_normal, btn_hover)
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 sys.exit()
                 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if train_btn.collidepoint(event.pos):
-                    GLOBAL_CONFIG.update('mode', "train")
-                    return AppState.TRAIN
-
                 if play_btn.collidepoint(event.pos):
-                    GLOBAL_CONFIG.update('mode', "play")
-                    return AppState.PLAYING
-
-                if watch_train_btn.collidepoint(event.pos):
-                    GLOBAL_CONFIG.update('mode', "watch-train")
+                    return AppState.HUMAN_PLAYING
+                elif watch_train_btn.collidepoint(event.pos):
                     return AppState.WATCH_TRAIN
-
-                if watch_exploration_train_btn.collidepoint(event.pos):
-                    GLOBAL_CONFIG.update('mode', "watch-exploration-train")
-                    return AppState.WATCH_EXPLORATION_TRAIN
-
-                if watch_play_exploitation_btn.collidepoint(event.pos):
-                    GLOBAL_CONFIG.update('mode', "watch-exploitation")
-                    return AppState.WATCH_EXPLOITATION
-
-                if config_btn.collidepoint(event.pos):
+                elif agent_play_btn.collidepoint(event.pos):
+                    return AppState.AGENT_PLAYING
+                elif config_btn.collidepoint(event.pos):
                     return AppState.CONFIG
 
         pygame.display.flip()
@@ -416,7 +395,7 @@ class GraphicsEngine:
 
         btn_normal = (50, 50, 50, 60)
         btn_hover = (100, 100, 200, 120)
-        interactive_zones = []
+        interactive_zones: list[tuple[pygame.Rect, str]] = []
 
         self.draw_text_aligned("ENVIRONMENT RULES", (200, 200, 200), self.window_size // 2, start_y - 25, align="center")
         for i, (key, label) in enumerate(config_keys):
@@ -435,8 +414,7 @@ class GraphicsEngine:
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                pygame.quit()
-                sys.exit()
+                return AppState.LOBBY
                 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.active_input:

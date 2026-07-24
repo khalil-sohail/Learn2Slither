@@ -1,6 +1,5 @@
 import os
 
-
 class Config:
     """
     A class to hold the configuration for the Snake game engine.
@@ -18,12 +17,12 @@ class Config:
         
         # Neural Network Hyperparameters
         self.learning_rate = 0.001
-        self.gamma = 0.99
-        self.epsilon_decay = 0.995
-        self.memory_capacity = 100000
+        self.gamma = 0.9
+        self.epsilon_decay = 0.7
+        self.memory_capacity = 1000000
         
         # Application & File I/O State
-        self.mode = "play"
+        self.mode = "LOBBY"
         self.target_weights = None
         self.save_interval = 100
 
@@ -38,6 +37,7 @@ class Config:
             "reward_red_apple": float,
             "reward_death": float,
             "reward_step": float,
+            "epoch": int,
             "learning_rate": float,
             "gamma": float,
             "epsilon_decay": float,
@@ -48,20 +48,71 @@ class Config:
             "print_vision": bool
         }
         self._expected_input = {
-            "board_size": {"min": 5, "max": 100},
-            "fps_cap": {"min": 1, "max": 1000},
-            "reward_green_apple": {"min": -10.0, "max": 10.0},
-            "reward_red_apple": {"min": -10.0, "max": 10.0},
-            "reward_death": {"min": -10.0, "max": 10.0},
-            "reward_step": {"min": -1.0, "max": 1.0},
-            "learning_rate": {"min": 0.0001, "max": 1.0},
-            "gamma": {"min": 0.0, "max": 1.0},
-            "epsilon_decay": {"min": 0.0, "max": 1.0},
-            "memory_capacity": {"min": 1000, "max": 1000000},
-            "mode": {"allowed": ["train", "play", "watch-train", "watch-exploration-train", "watch-exploitation"]},
-            "target_weights": {"allowed": [None, str]},
-            "save_interval": {"min": 1, "max": 10000},
-            "print_vision": {"allowed": [True, False]}
+            "board_size": {
+                "min": 5,
+                "max": 100
+            },
+            "fps_cap": {
+                "min": 1,
+                "max": 1000
+            },
+            "reward_green_apple": {
+                "min": -10.0,
+                "max": 10.0
+            },
+            "reward_red_apple": {
+                "min": -10.0,
+                "max": 10.0
+            },
+            "reward_death": {
+                "min": -10.0,
+                "max": 10.0
+            },
+            "reward_step": {
+                "min": -1.0,
+                "max": 1.0
+            },
+            "epoch": {
+                "min": 1,
+                "max": 1000000
+            },
+            "learning_rate": {
+                "min": 0.0001,
+                "max": 1.0
+            },
+            "gamma": {
+                "min": 0.0,
+                "max": 1.0
+            },
+            "epsilon_decay": {
+                "min": 0.0,
+                "max": 1.0
+            },
+            "memory_capacity": {
+                "min": 1000,
+                "max": 1000000
+            },
+            "mode": {
+                "allowed": [
+                    "LOBBY",
+                    "CONFIG",
+                    "TRAIN",
+                    "HUMAN_PLAYING",
+                    "WATCH_TRAIN",
+                    "AGENT_PLAYING",
+                    "EXIT"
+                ]
+            },
+            "target_weights": {
+                "allowed": [None, str]
+            },
+            "save_interval": {
+                "min": 1,
+                "max": 10000
+            },
+            "print_vision": {
+                "allowed": [True, False
+            ]}
         }
 
     def update(self, key, value):

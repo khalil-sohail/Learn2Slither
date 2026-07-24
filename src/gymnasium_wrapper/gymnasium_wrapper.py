@@ -33,12 +33,11 @@ class GymnasiumWrapper(gym.Env):
     def reset(self):
         """
         Resets the environment to an initial state.
-        :return: A tuple containing the initial observation and an empty info dictionary.
+        :return: The initial observation.
         """
         self.observation_space = spaces.Box(low=0, high=4, shape=(GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size'),), dtype=np.int32)
-        # physics = MovesEngine() # no need for now
         self.board.reset_game()
-        return self.board.get_board_array(), {}
+        return self.board.get_snake_vision_vector()
 
     def step(self, action: int):
         """
@@ -57,21 +56,21 @@ class GymnasiumWrapper(gym.Env):
                 is_dead = True
 
         reward = self._calculate_reward(is_dead, ate_red_apple, ate_green_apple)
-        # truncated = False
-        # info = {}
-        tail_direction = self.board.get_tail_direction(self.board.body[0], self.board.body[1]) if len(self.board.body) > 1 else None
-        
-        return self.board.get_board_array(), reward, is_dead, tail_direction
+
+        return self.board.get_snake_vision_vector(), reward, is_dead
 
     def _calculate_reward(self, is_dead: bool, ate_red_apple: bool, ate_green_apple: bool):
         """Calculates the reward for the current step."""
-        reward = 0.0
+        reward = GLOBAL_CONFIG.get("reward_step")
+        
+        if ate_red_apple:
+            reward += GLOBAL_CONFIG.get("reward_red_apple")
+
+        if ate_green_apple:
+            reward += GLOBAL_CONFIG.get("reward_green_apple")
 
         if is_dead:
-            reward += GLOBAL_CONFIG.get('reward_death')
-        if ate_red_apple:
-            reward += GLOBAL_CONFIG.get('reward_red_apple')
-        if ate_green_apple:
-            reward += GLOBAL_CONFIG.get('reward_green_apple')
+            reward += GLOBAL_CONFIG.get("reward_death")
 
         return reward
+
