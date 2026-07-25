@@ -25,6 +25,7 @@ class DQNAgent(nn.Module):
         self.epsilon_decay  = GLOBAL_CONFIG.get("epsilon_decay")        # exploration rate for epsilon-greedy policy
         self.epsilon        = 1                                         # initial exploration rate
         self.min_epsilon    = 0.01
+        self.losses         = []
 
         self.q_network = nn.Sequential(
             nn.Linear(16, 256),
@@ -135,6 +136,7 @@ class DQNAgent(nn.Module):
             self.epsilon * self.epsilon_decay
         )
 
+        self.losses.append(loss.item())
         return loss.item()
 
     def save_model(self, file_name="./model.pth"):

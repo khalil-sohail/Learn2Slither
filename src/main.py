@@ -8,6 +8,7 @@ from app_config import GLOBAL_CONFIG
 from dqn_agent import DQNAgent
 import pygame
 import sys
+import numpy as np
 
 def get_input(current_action, APP_STATE=AppState.HUMAN_PLAYING):
     for event in pygame.event.get():
@@ -81,11 +82,13 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
     snake_vision = env.reset()
     action = Action.RIGHT
     epoch = GLOBAL_CONFIG.get('epoch')
-    scores = deque(maxlen=100)
+    scores_length = 50
+    scores = deque(maxlen=scores_length)
     i = 0
     j = 0
 
     while i < epoch:
+        j += 1
         action = agent.get_action(snake_vision)
         if GLOBAL_CONFIG.get('print_vision'):
             if action is Action.UP:
@@ -99,34 +102,39 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
 
         next_snake_vision, reward, is_dead = env.step(action)
         agent.remember(snake_vision, action, next_snake_vision, reward, is_dead)
-        if j % 5 == 0:
-            agent.train_step(batch_size=32)
+        agent.train_step(batch_size=32)
 
-
-        # print(
-        #     episode,
-        #     agent.epsilon,
-        #     len(agent.memory)
-        # )
+        if j % 12500 == 0:
+            print(
+                "epoch {}: Epsode: {}, Epsilon: {:.4f}, Memory Size: {}".format(
+                    i,
+                    j,
+                    agent.epsilon,
+                    len(agent.memory),
+                    agent.losses[-1] if agent.losses else None,
+                )
+            )
         if is_dead:
             i += 1
             board_score, green_apple_eaten, red_apple_eaten, _ = env.board.get_board_statistics()
             scores.append(board_score)
-            if i % 100 == 0:
+            if i % (scores_length // 5) == 0:
                 avg_score = sum(scores) / len(scores)
-                print(f"Epoch: {i}, Average Score (last 100): {avg_score:.2f}")
+                print(f"Epoch: {i}, Average Score (last {scores_length//5}): {avg_score:.2f}")
                 scores.clear()
             snake_vision = env.reset()
         else:
-            j += 1
             snake_vision = env.board.get_snake_vision_vector()
+
+
+    print(f"Training completed after {epoch} epochs. losses np.diff: (\n{np.diff(agent.losses)}\n)")
 
     return AppState.LOBBY
 
 def main(argv):
     try:
         parseArguments(argv)
-        print(GLOBAL_CONFIG.to_dict())
+        # print(GLOBAL_CONFIG.to_dict())
     except ValueError as e:
         print(f"Error: {e}")
         return

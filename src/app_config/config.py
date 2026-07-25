@@ -13,12 +13,12 @@ class Config:
         self.reward_green_apple = 1.0
         self.reward_red_apple = -0.5
         self.reward_death = -2.0
-        self.reward_step = -0.01
+        self.reward_step = -0.1
         
         # Neural Network Hyperparameters
         self.learning_rate = 0.001
-        self.gamma = 0.9
-        self.epsilon_decay = 0.7
+        self.gamma = 0.95
+        self.epsilon_decay = 0.99999
         self.memory_capacity = 1000000
         
         # Application & File I/O State
