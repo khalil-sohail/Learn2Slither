@@ -29,6 +29,7 @@ class AppState(IntEnum):
     TRAIN = 2
     HUMAN_PLAYING = 3
     WATCH_TRAIN = 4
-    AGENT_PLAYING = 5
-    EXIT = 6
+    AGENT_PLAYING_EX = 5
+    AGENT_PLAYING_EI = 6
+    EXIT = 7
 

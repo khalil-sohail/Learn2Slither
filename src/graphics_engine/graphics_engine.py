@@ -41,16 +41,41 @@ class GraphicsEngine:
     @property
     def cell_size(self):
         """
-        Dynamically calculates the square cell size based on the live config.
-        Returns a single integer.
+        Calculates a uniform cell size based on the smallest window dimension.
         """
-        board_size: int = GLOBAL_CONFIG.get('board_size')
-        return self.window_size // board_size
+        board_size = GLOBAL_CONFIG.get('board_size')
+        win_w, win_h = self.screen.get_size()
+        
+        return min(win_w, win_h) // board_size
+
+    @property
+    def board_offsets(self):
+        """
+        Calculates the X and Y offsets needed to center the board.
+        """
+        board_size = GLOBAL_CONFIG.get('board_size')
+        actual_board_size = self.cell_size * board_size
+        win_w, win_h = self.screen.get_size()
+        
+        offset_x = (win_w - actual_board_size) // 2
+        offset_y = (win_h - actual_board_size) // 2
+        return offset_x, offset_y
+
+    def cell_rect(self, row, col):
+        """
+        Returns the exact centered coordinates for a specific cell.
+        """
+        offset_x, offset_y = self.board_offsets
+        
+        x = offset_x + (col * self.cell_size)
+        y = offset_y + (row * self.cell_size)
+        
+        return (x, y)
     
     def _load_textures(self):
         textures = {}
         
-        def load_sprite(filename: str, full_scale: bool = False, darken_factor: int = 255):
+        def load_sprite(filename: str, full_scale: bool = False, darken_factor: int = 255) -> pygame.Surface:
             path = os.path.join("../assets/images/", filename)
             try:
                 img = pygame.image.load(path).convert_alpha()
@@ -152,13 +177,13 @@ class GraphicsEngine:
 
         self.screen.blit(hud_surface, (10, 10))
 
-
     def render_game_results_statistics(
             self,
-            score: int = 0,
-            green_apple_eaten: int = 0,
-            red_apple_eaten: int = 0
-        ):
+            score: int,
+            green_apple_eaten: int,
+            red_apple_eaten: int,
+            current_state: AppState,
+        ) -> AppState:
         """
         Renders the after-game results screen inside a centered card, with a
         "Return to Lobby" button. Blocks the game loop until the user clicks
@@ -249,15 +274,17 @@ class GraphicsEngine:
             pygame.display.flip()
             self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
 
+        return current_state
+
     def render_user_game_frame(
             self,
             board_array: np.ndarray,
             is_dead: bool,
             current_state: AppState,
-            score: int = 0,
-            green_apple_eaten: int = 0,
-            red_apple_eaten: int = 0
-        ):
+            score: int,
+            green_apple_eaten: int,
+            red_apple_eaten: int
+        ) -> AppState:
         """
         Renders the current board state to the display surface.
         :param board_array: A 1D NumPy array representing the current board state.
@@ -270,44 +297,49 @@ class GraphicsEngine:
             return self.render_game_results_statistics(
                 score=score,
                 green_apple_eaten=green_apple_eaten,
-                red_apple_eaten=red_apple_eaten
+                red_apple_eaten=red_apple_eaten,
+                current_state=current_state
             )
         else:
-            self.screen.fill((0, 0, 0))
+            self.screen.fill((25, 25, 25))
+            board_size = GLOBAL_CONFIG.get('board_size')
+            size = self.cell_size
+            actual_board_size = size * board_size
+            offset_x, offset_y = self.board_offsets
+
             if self.textures.get(Entity.GAME_BACKGROUND):
-                self.screen.blit(self.textures[Entity.GAME_BACKGROUND], (0, 0))
+                if self.textures[Entity.GAME_BACKGROUND].get_size() != (actual_board_size, actual_board_size):
+                    self.textures[Entity.GAME_BACKGROUND] = pygame.transform.scale(self.textures[Entity.GAME_BACKGROUND], (actual_board_size, actual_board_size))
+                self.screen.blit(self.textures[Entity.GAME_BACKGROUND], (offset_x, offset_y))
 
             current_time = pygame.time.get_ticks()
             animation_cycle = current_time % 1000
             frame_index = 1 if animation_cycle > 600 else 0
             for index, value in enumerate(board_array):
-                row = index // GLOBAL_CONFIG.get('board_size')
-                col = index % GLOBAL_CONFIG.get('board_size')
-                x = col * self.cell_size
-                y = row * self.cell_size
+                if value == Entity.EMPTY:
+                    continue
+                texture = pygame.Surface | None
+                row = index // board_size
+                col = index % board_size
+                x, y = self.cell_rect(row, col)
 
                 if value in (
-                    Entity.SNAKE_HEAD_UP, 
-                    Entity.SNAKE_HEAD_DOWN, 
-                    Entity.SNAKE_HEAD_LEFT, 
+                    Entity.SNAKE_HEAD_UP,
+                    Entity.SNAKE_HEAD_DOWN,
+                    Entity.SNAKE_HEAD_LEFT,
                     Entity.SNAKE_HEAD_RIGHT
                 ):
-                    texture = self.textures.get(value)[frame_index]
-                elif value in (
-                    Entity.SNAKE_TAIL_UP, 
-                    Entity.SNAKE_TAIL_DOWN, 
-                    Entity.SNAKE_TAIL_LEFT, 
-                    Entity.SNAKE_TAIL_RIGHT
-                ):
-                    texture = self.textures.get(value)
+                    textures = self.textures.get(value)
+                    texture = textures[frame_index] if textures else None
                 else:
                     texture = self.textures.get(value)
-                
-                if value != Entity.EMPTY:
-                    if texture:
-                        self.screen.blit(texture, (x, y))
-                    else:
-                        pygame.draw.rect(self.screen, (255, 0, 255), (x, y, self.cell_size, self.cell_size))
+
+                if texture:
+                    if (size, size) != texture.get_size():
+                        texture = pygame.transform.scale(texture, (size, size))
+                    self.screen.blit(texture, (x, y))
+                else:
+                    pygame.draw.rect(self.screen, (255, 0, 255), (x, y, size, size))
 
             self.render_live_results_statistics(
                 score=score,
@@ -319,10 +351,7 @@ class GraphicsEngine:
 
         return current_state
 
-    def render_agent_train(self):
-        pass
-
-    def render_lobby(self):
+    def render_lobby(self) -> AppState:
         pygame.draw.rect(self.screen, (0, 0, 0), (0, 0, self.window_size, self.window_size))
         if self.textures.get(Entity.LOBBY_BACKGROUND):
             self.screen.blit(self.textures[Entity.LOBBY_BACKGROUND], (0, 0))
@@ -332,15 +361,17 @@ class GraphicsEngine:
         center_x = self.window_size // 2 - 175
         play_btn = pygame.Rect(center_x, 200, 350, 50)
         watch_train_btn = pygame.Rect(center_x, 270, 350, 50)
-        agent_play_btn = pygame.Rect(center_x, 340, 350, 50)
-        config_btn = pygame.Rect(center_x, 410, 350, 50)
+        agent_play_EX_btn = pygame.Rect(center_x, 340, 350, 50)
+        agent_play_EI_btn = pygame.Rect(center_x, 410, 350, 50)
+        config_btn = pygame.Rect(center_x, 480, 350, 50)
         
         btn_normal = (50, 50, 50, 60)
         btn_hover = (100, 100, 200, 120)
         
         self.draw_button(play_btn, "HUMAN PLAYER", btn_normal, btn_hover)
         self.draw_button(watch_train_btn, "WATCH AGENT TRAINING", btn_normal, btn_hover)
-        self.draw_button(agent_play_btn, "WATCH AGENT PLAYING", btn_normal, btn_hover)
+        self.draw_button(agent_play_EX_btn, "AGENT PLAYING EX", btn_normal, btn_hover)
+        self.draw_button(agent_play_EI_btn, "AGENT PLAYING EI", btn_normal, btn_hover)
         self.draw_button(config_btn, "CONFIGURATION", btn_normal, btn_hover)
         
         for event in pygame.event.get():
@@ -352,8 +383,10 @@ class GraphicsEngine:
                     return AppState.HUMAN_PLAYING
                 elif watch_train_btn.collidepoint(event.pos):
                     return AppState.WATCH_TRAIN
-                elif agent_play_btn.collidepoint(event.pos):
-                    return AppState.AGENT_PLAYING
+                elif agent_play_EX_btn.collidepoint(event.pos):
+                    return AppState.AGENT_PLAYING_EX
+                elif agent_play_EI_btn.collidepoint(event.pos):
+                    return AppState.AGENT_PLAYING_EI
                 elif config_btn.collidepoint(event.pos):
                     return AppState.CONFIG
 
@@ -387,6 +420,9 @@ class GraphicsEngine:
         config_keys = [
             ("board_size", "Board Size"),
             ("fps_cap", "Target FPS"),
+            ("print_vision", "Print Snake Vision"),
+            ("new_weights", "New Weights"),
+            ("target_weights", "Target Weights"),
             ("reward_green_apple", "Reward: Green Apple"),
             ("reward_red_apple", "Reward: Red Apple"),
             ("reward_death", "Reward: Death"),

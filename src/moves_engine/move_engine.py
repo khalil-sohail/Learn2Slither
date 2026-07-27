@@ -15,9 +15,10 @@
 # all moves will be recived from the Gymnasium environment, and the moves will be applied to the board state, and the board state will be updated accordingly.
 
 from collections import deque
-
 from app_config.config import GLOBAL_CONFIG
 from constants import Action, Entity
+
+import numpy as np
 
 class MovesEngine:
     """
@@ -51,7 +52,7 @@ class MovesEngine:
 
         return row * GLOBAL_CONFIG.get('board_size') + col
 
-    def check_wall_body_collision(self, next_index: int, board_array: list):
+    def check_wall_body_collision(self, next_index: int, board_array: np.ndarray):
         """
         Checks if the next_index collides with the wall or the snake's body.
         :param next_index: The index to check for collision.

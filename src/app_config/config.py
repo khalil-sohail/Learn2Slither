@@ -11,23 +11,27 @@ class Config:
         self.board_size = 10
         self.fps_cap = 15
         self.reward_green_apple = 1.0
-        self.reward_red_apple = -0.5
+        self.reward_red_apple = -1.0
         self.reward_death = -2.0
-        self.reward_step = -0.1
+        self.reward_step = -0.01
         
         # Neural Network Hyperparameters
-        self.learning_rate = 0.001
-        self.gamma = 0.95
-        self.epsilon_decay = 0.99999
-        self.memory_capacity = 1000000
+        self.episodes = 5000
+        self.batch_size = 64
+        self.learning_rate = 0.0001
+        self.gamma = 0.97
+        self.epsilon_decay = 0.999
+        self.memory_capacity = 100000
         
         # Application & File I/O State
         self.mode = "LOBBY"
         self.target_weights = None
+        self.new_weights = None
         self.save_interval = 100
 
         # general configuration
         self.print_vision = False
+        # self.window_size = ()
 
         # expected input/types for each configuration parameter
         self._expected_types = {
@@ -37,13 +41,14 @@ class Config:
             "reward_red_apple": float,
             "reward_death": float,
             "reward_step": float,
-            "epoch": int,
+            "episodes": int,
             "learning_rate": float,
             "gamma": float,
             "epsilon_decay": float,
             "memory_capacity": int,
             "mode": str,
             "target_weights": type(None),
+            "new_weights": type(None),
             "save_interval": int,
             "print_vision": bool
         }
@@ -72,9 +77,9 @@ class Config:
                 "min": -1.0,
                 "max": 1.0
             },
-            "epoch": {
+            "episodes": {
                 "min": 1,
-                "max": 1000000
+                "max": 10000
             },
             "learning_rate": {
                 "min": 0.0001,
@@ -106,13 +111,16 @@ class Config:
             "target_weights": {
                 "allowed": [None, str]
             },
+            "new_weights": {
+                "allowed": [None, str]
+            },
             "save_interval": {
                 "min": 1,
                 "max": 10000
             },
             "print_vision": {
-                "allowed": [True, False
-            ]}
+                "allowed": [True, False]
+            }
         }
 
     def update(self, key, value):
