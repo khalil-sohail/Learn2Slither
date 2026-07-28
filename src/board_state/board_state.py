@@ -59,41 +59,43 @@ class BoardState:
         Initializes the BoardState with the specified size.
         :param size: The size of the board (number of cells in one dimension).
         """
-        self.board = np.zeros((GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size')), dtype=int)
+        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board = np.zeros((self.board_size * self.board_size), dtype=int)
         self.body = deque()
         self.red_apple = deque()
         self.green_apple = deque()
         self.red_apple_eaten = 0
         self.green_apple_eaten = 0
         self.board_score = 0
-        self.head_index: int = 10
+        self.head_index: int = 0
         self.tail_direction = Entity.SNAKE_TAIL_LEFT
 
     def reset_game(self):
         """
         Resets the game state, clearing the board and placing the initial snake head and apples.
         """
-        self.board = np.zeros((GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size')), dtype=int)
+        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board = np.zeros((self.board_size * self.board_size), dtype=int)
         self.body.clear()
         self.red_apple.clear()
         self.green_apple.clear()
         self.red_apple_eaten = 0
         self.green_apple_eaten = 0
         self.board_score = 0
-        self.head_index: int = 10
         self.tail_direction = Entity.SNAKE_TAIL_LEFT
 
         self.board.fill(Entity.EMPTY)
-        self.board[:GLOBAL_CONFIG.get('board_size')] = Entity.WALL
-        self.board[-GLOBAL_CONFIG.get('board_size'):] = Entity.WALL
-        self.board[::GLOBAL_CONFIG.get('board_size')] = Entity.WALL
-        self.board[GLOBAL_CONFIG.get('board_size') - 1::GLOBAL_CONFIG.get('board_size')] = Entity.WALL
+        self.board[:self.board_size] = Entity.WALL
+        self.board[-self.board_size:] = Entity.WALL
+        self.board[::self.board_size] = Entity.WALL
+        self.board[self.board_size - 1::self.board_size] = Entity.WALL
 
-        interior_size = GLOBAL_CONFIG.get('board_size') - 2
+        interior_size = self.board_size - 2
         center_row = 1 + interior_size // 2
         center_col = 1 + interior_size // 2
-        self.head_index = center_row * GLOBAL_CONFIG.get('board_size') + center_col
+        self.head_index = center_row * self.board_size + center_col
         self.body.append(self.head_index)
+        self.board[self.head_index] = Entity.SNAKE_HEAD_UP
         
         self.spawn_apple(Entity.RED_APPLE)
         for i in range(2):
@@ -103,6 +105,7 @@ class BoardState:
         """
         Moves the snake to the specified index, updating the board state accordingly.
         :param next_index: The index to which the snake's head will move.
+        :return: The Entity that was at next_index before the move (EMPTY, RED_APPLE, or GREEN_APPLE).
         """
         ate_apple = self.board[next_index]
 
@@ -114,13 +117,13 @@ class BoardState:
         tail_moves = 1
 
         if ate_apple == Entity.RED_APPLE:
-            self.red_apple.popleft()
+            self.red_apple.remove(next_index)
             self.spawn_apple(Entity.RED_APPLE)
             self.red_apple_eaten += 1
             self.board_score -= 1 if self.board_score > 0 else 0
             tail_moves += 1
         elif ate_apple == Entity.GREEN_APPLE:
-            self.green_apple.popleft()
+            self.green_apple.remove(next_index)
             self.spawn_apple(Entity.GREEN_APPLE)
             self.green_apple_eaten += 1
             self.board_score += 1
@@ -132,6 +135,8 @@ class BoardState:
         self.head_index = next_index
         if len(self.body) >= 2:
             self.board[self.body[0]] = self.get_tail_direction(self.body[0], self.body[1])
+
+        return ate_apple
 
     def spawn_apple(self, color: Entity):
         """
@@ -167,9 +172,9 @@ class BoardState:
     def get_tail_direction(self, front_index: int, behind_index: int):
         difference = front_index - behind_index
         
-        if difference == -GLOBAL_CONFIG.get('board_size'):
+        if difference == -self.board_size:
             return Entity.SNAKE_TAIL_UP
-        elif difference == GLOBAL_CONFIG.get('board_size'):
+        elif difference == self.board_size:
             return Entity.SNAKE_TAIL_DOWN
         elif difference == -1:
             return Entity.SNAKE_TAIL_LEFT
@@ -181,9 +186,9 @@ class BoardState:
     def get_head_direction(self, front_index: int, behind_index: int):
         difference = front_index - behind_index
         
-        if difference == GLOBAL_CONFIG.get('board_size'):
+        if difference == self.board_size:
             return Entity.SNAKE_HEAD_UP
-        elif difference == -GLOBAL_CONFIG.get('board_size'):
+        elif difference == -self.board_size:
             return Entity.SNAKE_HEAD_DOWN
         elif difference == 1:
             return Entity.SNAKE_HEAD_LEFT
@@ -204,8 +209,8 @@ class BoardState:
         """
         vision_vector = np.zeros(16, dtype=np.float32)
         directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]  # North, East, South, West
-        head_row = self.head_index // GLOBAL_CONFIG.get('board_size')
-        head_col = self.head_index % GLOBAL_CONFIG.get('board_size')
+        head_row = self.head_index // self.board_size
+        head_col = self.head_index % self.board_size
         
         rays_chars = {
             (-1, 0): [],
@@ -226,11 +231,11 @@ class BoardState:
                 col += dc
                 distance_to_wall += 1
 
-                if row < 0 or row >= GLOBAL_CONFIG.get('board_size') or col < 0 or col >= GLOBAL_CONFIG.get('board_size'):
+                if row < 0 or row >= self.board_size or col < 0 or col >= self.board_size:
                     rays_chars[(dr, dc)].append("W")
                     break
 
-                index = row * GLOBAL_CONFIG.get('board_size') + col
+                index = row * self.board_size + col
                 cell_value = self.board[index]
 
                 if cell_value in (Entity.SNAKE_BODY, Entity.SNAKE_TAIL_UP, Entity.SNAKE_TAIL_DOWN, Entity.SNAKE_TAIL_LEFT, Entity.SNAKE_TAIL_RIGHT):

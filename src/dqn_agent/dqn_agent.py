@@ -27,7 +27,7 @@ class DQNAgent(nn.Module):
         super(DQNAgent, self).__init__()
         self.memory         = deque(maxlen=GLOBAL_CONFIG.get("memory_capacity"))
         self.epsilon        = 1
-        self.min_epsilon    = 0.0005
+        self.min_epsilon    = 0.05
         self.losses         = []
         self.learning_enabled = learning_enabled
         torch.backends.cudnn.benchmark = True
@@ -38,12 +38,22 @@ class DQNAgent(nn.Module):
         self.q_network = nn.Sequential(
             nn.Linear(16, 128),
             nn.ReLU(),
-            nn.Linear(128, 128),
+            nn.Linear(128, 256),
             nn.ReLU(),
-            # nn.Linear(128, 128),
-            # nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
             nn.Linear(128, 4),
         )
+        
+        # self.target_network = nn.Sequential(
+        #     nn.Linear(16, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 256),
+        #     nn.ReLU(),
+        #     nn.Linear(256, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 4),
+        # )
 
         self.criterion = nn.SmoothL1Loss()
         self.optimizer = optim.Adam(
@@ -189,6 +199,7 @@ class DQNAgent(nn.Module):
                 "model_state_dict": self.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "epsilon": self.epsilon,
+                "memory": self.memory,
             }, GLOBAL_CONFIG.get("new_weights"))
 
     def load_model(self):
@@ -198,10 +209,15 @@ class DQNAgent(nn.Module):
         point it was saved at so training or evaluation can continue.
         """
         if GLOBAL_CONFIG.get("target_weights") is not None:
-            checkpoint = torch.load(GLOBAL_CONFIG.get("target_weights"), map_location=self.device)
+            checkpoint = torch.load(
+                GLOBAL_CONFIG.get("target_weights"),
+                map_location=self.device,
+                weights_only=False
+            )
             self.load_state_dict(checkpoint["model_state_dict"])
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.epsilon = checkpoint["epsilon"]
+            self.memory = checkpoint["memory"]
 
     def __del__(self):
         """

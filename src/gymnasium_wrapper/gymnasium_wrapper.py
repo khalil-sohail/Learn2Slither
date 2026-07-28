@@ -28,7 +28,8 @@ class GymnasiumWrapper(gym.Env):
         :param board_size: The size of the board (number of cells in one dimension).
         """
         self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.Box(low=0, high=4, shape=(GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size'),), dtype=np.int32)
+        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.observation_space = spaces.Box(low=0, high=4, shape=(self.board_size * self.board_size,), dtype=np.int32)
         self.board = BoardState()
         self.physics = MovesEngine()
         self.steps_since_last_green_apple = 0
@@ -38,8 +39,11 @@ class GymnasiumWrapper(gym.Env):
         Resets the environment to an initial state.
         :return: The initial observation.
         """
-        self.observation_space = spaces.Box(low=0, high=4, shape=(GLOBAL_CONFIG.get('board_size') * GLOBAL_CONFIG.get('board_size'),), dtype=np.int32)
+        self.observation_space = spaces.Box(low=0, high=4, shape=(self.board_size * self.board_size,), dtype=np.int32)
+        self.steps_since_last_green_apple = 0
+        self.board_size = GLOBAL_CONFIG.get('board_size')
         self.board.reset_game()
+        self.physics.reset_board_size()
         return self.board.get_snake_vision_vector()
 
     def step(self, action: Action):
@@ -50,13 +54,15 @@ class GymnasiumWrapper(gym.Env):
         """
         next_index = self.physics.get_next_position(self.board.head_index, action)
         is_dead = self.physics.check_wall_body_collision(next_index, self.board.get_board_array())
-        ate_red_apple = self.physics.check_apple_collision(self.board.red_apple, next_index)
-        ate_green_apple = self.physics.check_apple_collision(self.board.green_apple, next_index)
-
+        
         if not is_dead:
-            self.board.move_snake(next_index)
+            ate_apple = self.board.move_snake(next_index)
+            ate_red_apple = ate_apple == Entity.RED_APPLE
+            ate_green_apple = ate_apple == Entity.GREEN_APPLE
             if ate_red_apple and len(self.board.body) <= 0:
                 is_dead = True
+        else:
+            ate_red_apple = ate_green_apple = False
 
         reward, done = self._calculate_reward(is_dead, ate_red_apple, ate_green_apple)
 
@@ -78,14 +84,27 @@ class GymnasiumWrapper(gym.Env):
 
         if is_dead:
             reward += GLOBAL_CONFIG.get("reward_death")
-            
-        reward_step = -0.01 - 0.04 * (
-            1 - math.exp(-self.steps_since_last_green_apple / 80)
-        )
 
-        if self.steps_since_last_green_apple > GLOBAL_CONFIG.get("board_size") * GLOBAL_CONFIG.get("board_size") * 2:
-            done = True
-            reward = GLOBAL_CONFIG.get("reward_death") + reward_step
+        board_size = self.board_size
+        head = self.board.head_index
+
+        def manhattan(index1, index2):
+            x1, y1 = index1 % board_size, index1 // board_size
+            x2, y2 = index2 % board_size, index2 // board_size
+            return abs(x1 - x2) + abs(y1 - y2)
+
+        distance = min(
+            manhattan(head, self.board.green_apple[0]),
+            manhattan(head, self.board.green_apple[1]),
+        )
+        ratio = self.steps_since_last_green_apple / max(distance, 1)
+        reward_step = -0.01 - min((ratio / 10.0) ** 2, 1.0)
+            
+        s = self.steps_since_last_green_apple
+        reward_step = -0.01 - min(
+            (s / 100.0) ** 2 * 0.5,
+            1.0
+        )
 
         return reward + reward_step, done
 

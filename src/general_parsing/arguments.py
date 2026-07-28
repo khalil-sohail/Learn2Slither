@@ -105,11 +105,11 @@ def parseArguments(argv) -> bool:
         # File I/O Flags
         "--weights": (
             ("target_weights", str),
-            "Expected Weights File: string"
+            "Expected Weights File Path: string"
         ),
         "--new-weights": (
             ("new_weights", str),
-            "Expected New Weights File: string"
+            "Expected New Weights File Path: string"
         ),
         "--save-interval": (
             ("save_interval", int),
@@ -139,14 +139,14 @@ def parseArguments(argv) -> bool:
             print("  --epsilon         Epsilon decay rate (default: 0.995)")
             print("  --memory          Replay buffer capacity")
             print("Rewards:")
-            print("  --reward-red-apple    Float reward for eating red apple (default: 1.0)")
+            print("  --reward-red-apple    Float reward for eating red apple (default: -1.0)")
             print("  --reward-green-apple    Float reward for eating green apple (default: 1.0)")
-            print("  --reward-death    Float penalty for dying (default: -1.0)")
+            print("  --reward-death    Float penalty for dying (default: -2.0)")
             print("  --reward-step     Float penalty per tick (default: -0.01)")
             print("Files:")
             print("  --weights         Path to .pt file to load")
             print("  --new-weights     Path to .pt file to load")
-            print("  --save-interval   Episodes between saving weights")
+            print("  --save-interval   updates between saving weights (default: 1000)")
             print("General Configuration:")
             print("  --print-vision    Whether to print vision information (default: False)")
             return False
@@ -157,9 +157,13 @@ def parseArguments(argv) -> bool:
             
             (dict_key, cast_func), explanation = arg_map[arg]
             try:
-                GLOBAL_CONFIG.update(dict_key, cast_func(argv[i + 1]))
+                casted_value = cast_func(argv[i + 1])
             except ValueError:
-                raise ValueError(f"Invalid type for {arg}. {explanation}.")
+                raise ValueError(f"`{type(argv[i + 1]).__name__}` is Invalid type for {arg}. {explanation}.")
+            try:
+                GLOBAL_CONFIG.update(dict_key, casted_value)
+            except ValueError as e:
+                raise ValueError(e)
                 
             i += 2
             continue

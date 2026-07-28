@@ -50,7 +50,7 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
             break
 
         if current_state == AppState.WATCH_TRAIN:
-            action = agent.get_action(snake_vision)
+            action = agent.get_action(snake_vision, explore_mode=True)
         elif current_state in [
             AppState.AGENT_PLAYING_EX,
             AppState.AGENT_PLAYING_EI
@@ -106,7 +106,7 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
     while episode < episodes:
         global_step += 1
 
-        raw_action = agent.get_action(snake_vision)
+        raw_action = agent.get_action(snake_vision, explore_mode=True)
         action = Action(raw_action)
 
         if GLOBAL_CONFIG.get('print_vision'):
@@ -124,7 +124,7 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
         agent.train_step(batch_size=GLOBAL_CONFIG.get('batch_size'), update_epsilon=update_epsilon)
         update_epsilon = False
 
-        if global_step % 10000 == 0:
+        if global_step % 5000 == 0:
             debug += "episode {}: Step: {}, Epsilon: {:.4f}, Memory Size: {}, Loss: {}\n".format(
                 episode,
                 global_step,
@@ -146,6 +146,9 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
                 debug += "Episode: {}, Avg Score (last {}): {:.2f}, ".format(
                     episode, len(scores), avg_score
                 )
+                debug += "higest score: {:.2f}, minimum score: {:.2f}\n".format(
+                    max(scores), min(scores)
+                )
                 debug += "Avg Green Apples: {:.2f}, Avg Red Apples: {:.2f}\n".format(
                     avg_green, avg_red
                 )
@@ -153,7 +156,10 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
             snake_vision = env.reset()
         else:
             snake_vision = next_snake_vision
-            
+        
+        if episode % 50 == 0 and episode > 0:
+            print(debug, end="")
+            debug = ""
 
     if agent.losses:
         diffs = np.diff(agent.losses)
@@ -189,6 +195,7 @@ def main(argv):
                 current_state = train_game_loop(env, agent)
                 if gfx is None:
                     gfx = GraphicsEngine(window_size)
+                    env.reset()
             else:
                 if current_state == AppState.LOBBY:
                     current_state = gfx.render_lobby()
@@ -196,6 +203,7 @@ def main(argv):
                     current_state = gfx.render_config()
                     if current_state != AppState.CONFIG:
                         gfx.refresh_textures()
+                        env.reset()
                 elif current_state in [
                     AppState.HUMAN_PLAYING,
                     AppState.WATCH_TRAIN,

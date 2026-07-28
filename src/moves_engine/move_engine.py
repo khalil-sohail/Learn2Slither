@@ -30,6 +30,14 @@ class MovesEngine:
         Initializes the MovesEngine with the specified board size.
         :param size: The size of the board (number of cells in one dimension).
         """
+        self.board_size = GLOBAL_CONFIG.get('board_size')
+    
+    def reset_board_size(self):
+        """
+        Resets the board size from the GLOBAL_CONFIG.
+        This is useful if the board size is changed during runtime.
+        """
+        self.board_size = GLOBAL_CONFIG.get('board_size')
 
     def get_next_position(self, head_index, action):
         """
@@ -38,19 +46,19 @@ class MovesEngine:
         :param action: The action to be taken (Action.UP: Up, Action.DOWN: Down, Action.LEFT: Left, Action.RIGHT: Right).
         :return: The next index after applying the action.
         """
-        row = head_index // GLOBAL_CONFIG.get('board_size')
-        col = head_index % GLOBAL_CONFIG.get('board_size')
+        row = head_index // self.board_size
+        col = head_index % self.board_size
 
         if action == Action.UP:
-            row = (row - 1) % GLOBAL_CONFIG.get('board_size')
+            row = (row - 1) % self.board_size
         elif action == Action.DOWN:
-            row = (row + 1) % GLOBAL_CONFIG.get('board_size')
+            row = (row + 1) % self.board_size
         elif action == Action.LEFT:
-            col = (col - 1) % GLOBAL_CONFIG.get('board_size')
+            col = (col - 1) % self.board_size
         elif action == Action.RIGHT:
-            col = (col + 1) % GLOBAL_CONFIG.get('board_size')
+            col = (col + 1) % self.board_size
 
-        return row * GLOBAL_CONFIG.get('board_size') + col
+        return row * self.board_size + col
 
     def check_wall_body_collision(self, next_index: int, board_array: np.ndarray):
         """
@@ -63,17 +71,17 @@ class MovesEngine:
             return True
 
         destination_value = board_array[next_index]
-        if destination_value == Entity.WALL or destination_value == Entity.SNAKE_BODY:
+        if destination_value in [Entity.WALL, Entity.SNAKE_BODY]:
             return True
         return False
 
-    def check_apple_collision(self, apple_indexs: deque, next_index: int):
-        """
-        Checks if the next_index collides with an apple.
-        :param apple_indexs: A deque of indices of apples on the board.
-        :param next_index: The index to check for collision.
-        :return: True if the apple is eaten, False otherwise.
-        """
-        if apple_indexs is not None and next_index in apple_indexs:
-            return True
-        return False
+    # def check_apple_collision(self, apple_indexs: deque, next_index: int):
+    #     """
+    #     Checks if the next_index collides with an apple.
+    #     :param apple_indexs: A deque of indices of apples on the board.
+    #     :param next_index: The index to check for collision.
+    #     :return: True if the apple is eaten, False otherwise.
+    #     """
+    #     if apple_indexs is not None and next_index in apple_indexs:
+    #         return True
+    #     return False

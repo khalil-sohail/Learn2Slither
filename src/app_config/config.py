@@ -11,23 +11,23 @@ class Config:
         self.board_size = 10
         self.fps_cap = 15
         self.reward_green_apple = 1.0
-        self.reward_red_apple = -1.0
+        self.reward_red_apple = -0.9
         self.reward_death = -2.0
         self.reward_step = -0.01
         
         # Neural Network Hyperparameters
         self.episodes = 5000
         self.batch_size = 64
-        self.learning_rate = 0.0001
-        self.gamma = 0.97
-        self.epsilon_decay = 0.999
+        self.learning_rate = 0.00005
+        self.gamma = 0.95
+        self.epsilon_decay = 0.9995
         self.memory_capacity = 100000
         
         # Application & File I/O State
         self.mode = "LOBBY"
         self.target_weights = None
         self.new_weights = None
-        self.save_interval = 100
+        self.save_interval = 1000
 
         # general configuration
         self.print_vision = False
@@ -109,10 +109,10 @@ class Config:
                 ]
             },
             "target_weights": {
-                "allowed": [None, str]
+                "allowed": [str, None, "must_exist"]
             },
             "new_weights": {
-                "allowed": [None, str]
+                "allowed": [str, None, "optional"]
             },
             "save_interval": {
                 "min": 1,
@@ -156,15 +156,14 @@ class Config:
             
             elif expected_type == type(None) and "allowed" in validation_rules and str in validation_rules["allowed"]:
                 path = str(value)
-                if not os.path.exists(path):
+                if not os.path.exists(path) and "must_exist" in validation_rules["allowed"]:
                     raise ValueError(f"File path does not exist: {path}")
                 casted_value = path
-            
             else:
                 casted_value = expected_type(value)
                 
-        except (ValueError, TypeError):
-            raise ValueError(f"Invalid input type for '{key}'. Expected {expected_type.__name__}.")
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid input type for '{key}'. Expected {expected_type.__name__}. Reason: {e}")
 
         if "min" in validation_rules and "max" in validation_rules:
             if not (validation_rules["min"] <= casted_value <= validation_rules["max"]):

@@ -31,6 +31,7 @@ class GraphicsEngine:
         :param fps: The frames per second for rendering.
         """
         pygame.init()
+        self.board_size = GLOBAL_CONFIG.get('board_size')
         self.screen = pygame.display.set_mode((window_size, window_size), pygame.HIDDEN)
         self.clock = pygame.time.Clock()
         self.window_size = window_size
@@ -43,18 +44,16 @@ class GraphicsEngine:
         """
         Calculates a uniform cell size based on the smallest window dimension.
         """
-        board_size = GLOBAL_CONFIG.get('board_size')
         win_w, win_h = self.screen.get_size()
         
-        return min(win_w, win_h) // board_size
+        return min(win_w, win_h) // self.board_size
 
     @property
     def board_offsets(self):
         """
         Calculates the X and Y offsets needed to center the board.
         """
-        board_size = GLOBAL_CONFIG.get('board_size')
-        actual_board_size = self.cell_size * board_size
+        actual_board_size = self.cell_size * self.board_size
         win_w, win_h = self.screen.get_size()
         
         offset_x = (win_w - actual_board_size) // 2
@@ -126,6 +125,7 @@ class GraphicsEngine:
         """
         Forces the engine to reload and rescale all image assets 
         """
+        self.board_size = GLOBAL_CONFIG.get('board_size')
         self.textures = self._load_textures()
 
     def render_live_results_statistics(
@@ -294,6 +294,8 @@ class GraphicsEngine:
         :param current_state: The current state of the application.
         """
         if is_dead:
+            if current_state == AppState.TRAIN:
+                return current_state
             return self.render_game_results_statistics(
                 score=score,
                 green_apple_eaten=green_apple_eaten,
@@ -302,14 +304,17 @@ class GraphicsEngine:
             )
         else:
             self.screen.fill((25, 25, 25))
-            board_size = GLOBAL_CONFIG.get('board_size')
+            board_size = self.board_size
             size = self.cell_size
             actual_board_size = size * board_size
             offset_x, offset_y = self.board_offsets
 
             if self.textures.get(Entity.GAME_BACKGROUND):
                 if self.textures[Entity.GAME_BACKGROUND].get_size() != (actual_board_size, actual_board_size):
-                    self.textures[Entity.GAME_BACKGROUND] = pygame.transform.scale(self.textures[Entity.GAME_BACKGROUND], (actual_board_size, actual_board_size))
+                    self.textures[Entity.GAME_BACKGROUND] = pygame.transform.scale(
+                        self.textures[Entity.GAME_BACKGROUND],
+                        (actual_board_size, actual_board_size)
+                    )
                 self.screen.blit(self.textures[Entity.GAME_BACKGROUND], (offset_x, offset_y))
 
             current_time = pygame.time.get_ticks()
