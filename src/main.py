@@ -94,8 +94,8 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
     return AppState.LOBBY
 
 BUCKETS = [
-    [5, 6, 7, 8, 9, 10, 12, 15],
-    [16, 18, 20, 24, 27, 30],
+    [5, 6, 7, 8, 9, 10, 12, 14, 15],
+    [16, 18, 20, 23, 25, 28, 30],
     [32, 35, 40, 45, 50],
     [55, 60, 65, 70, 75],
     [80, 85, 90, 95, 100],
@@ -104,16 +104,17 @@ BUCKETS = [
 def sample_board_size(progress: float) -> tuple[int, int]:
 
     if progress < 0.2:
-        weights = [1.0, 0.0, 0.0, 0.0, 0.0]
+        weights = [0.90, 0.08, 0.02, 0.00, 0.00]
     elif progress < 0.4:
-        weights = [0.7, 0.3, 0.0, 0.0, 0.0]
+        weights = [0.75, 0.18, 0.06, 0.01, 0.00]
     elif progress < 0.6:
-        weights = [0.5, 0.3, 0.2, 0.0, 0.0]
+        weights = [0.60, 0.22, 0.13, 0.04, 0.01]
     elif progress < 0.8:
-        weights = [0.35, 0.30, 0.20, 0.15, 0.0]
+        weights = [0.45, 0.25, 0.18, 0.10, 0.02]
+    elif progress < 0.9:
+        weights = [0.15, 0.20, 0.30, 0.25, 0.10]
     else:
-        weights = [0.20, 0.20, 0.20, 0.20, 0.20]
-
+        weights = [0.05, 0.10, 0.35, 0.35, 0.15]
     bucket_index = random.choices(
         range(len(BUCKETS)),
         weights=weights,
@@ -124,107 +125,6 @@ def sample_board_size(progress: float) -> tuple[int, int]:
 
     return bucket_index, board_size
 
-# def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
-#     snake_vision = env.reset(GLOBAL_CONFIG.get("board_size"))
-#     episodes = GLOBAL_CONFIG.get("episodes")
-#     scores_length = 1000
-#     print_every = scores_length // 5
-#     scores = deque(maxlen=print_every)
-#     episode = 0
-#     global_step = 0
-#     bucket_index = 0
-#     debug: str = ""
-
-#     while episode < episodes:
-#         global_step += 1
-
-#         raw_action = agent.get_action(snake_vision, explore_mode=True, bucket_index=bucket_index)
-#         action = Action(raw_action)
-
-#         if GLOBAL_CONFIG.get("print_vision"):
-#             if action is Action.UP:
-#                 print("UP")
-#             elif action is Action.DOWN:
-#                 print("DOWN")
-#             elif action is Action.LEFT:
-#                 print("LEFT")
-#             elif action is Action.RIGHT:
-#                 print("RIGHT")
-
-#         next_snake_vision, reward, is_dead = env.step(action)
-#         agent.remember(snake_vision, action, next_snake_vision, reward, is_dead)
-#         agent.train_step(batch_size=GLOBAL_CONFIG.get("batch_size"), bucket_index=bucket_index)
-        
-#         if global_step % GLOBAL_CONFIG.get("save_interval") == 0:
-#             agent.update_target_network()
-
-#         if is_dead:
-#             episode += 1
-#             agent.last_episode = episode
-#             board_score, green_apple_eaten, red_apple_eaten, _ = env.board.get_board_statistics()
-#             scores.append((
-#                 board_score,
-#                 GLOBAL_CONFIG.get("board_size"),
-#                 green_apple_eaten,
-#                 red_apple_eaten,
-#             ))
-
-#             if episode % print_every == 0 and scores:
-#                 per_board = defaultdict(list)
-
-#                 for score, board_size, green, red in scores:
-#                     per_board[board_size].append((score, green, red))
-
-#                 debug += "episode {}: Step: {}, Epsilon: {:.4f}, Memory Size: {}, Loss: {}\n".format(
-#                     episode,
-#                     global_step,
-#                     agent.epsilon,
-#                     len(agent.memory),
-#                     agent.losses[-1] if agent.losses else None,
-#                 ) + f"Episode: {episode}\n"
-
-#                 for board_size in sorted(per_board):
-#                     games = per_board[board_size]
-
-#                     avg_score = sum(x[0] for x in games) / len(games)
-#                     avg_green = sum(x[1] for x in games) / len(games)
-#                     avg_red = sum(x[2] for x in games) / len(games)
-#                     best_score = max(x[0] for x in games)
-#                     success_rate = sum(x[0] > 0 for x in games) / len(games) * 100
-
-#                     debug += (
-#                         f"  {board_size:3}x{board_size}: "
-#                         f"Avg Score ({len(games)} games): {avg_score:.2f}, "
-#                         f"Best: {best_score}, "
-#                         f"Success: {success_rate:.1f}%, "
-#                         f"Green: {avg_green:.2f}, "
-#                         f"Red: {avg_red:.2f}\n"
-#                     )
-
-#                 scores.clear()
-            
-#             progress = agent.last_episode / (agent.last_episode + episodes)
-#             bucket_index, board_size = sample_board_size(progress)
-#             snake_vision = env.reset(board_size=board_size)
-#         else:
-#             snake_vision = next_snake_vision
-        
-#         if episode % 50 == 0 and episode > 0:
-#             print(debug, end="")
-#             debug = ""
-
-#     if agent.losses:
-#         diffs = np.diff(agent.losses)
-#         debug += "Training completed after {} episodes. Loss diff mean: {:.6f}, std: {:.6f}\n".format(
-#             episodes, diffs.mean(), diffs.std()
-#         )
-#     else:
-#         debug += f"Training completed after {episodes} episodes. No losses recorded.\n"
-
-#     print(debug, end="")
-
-#     return AppState.LOBBY
-
 def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
     episodes = GLOBAL_CONFIG.get("episodes")
     episode = agent.last_episode
@@ -232,9 +132,9 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
     bucket_index, board_size = sample_board_size(episode / episodes)
     snake_vision = env.reset(board_size=board_size)
 
-    print_every = 200
+    print_every = 10000
 
-    global_step = 0
+    global_step = agent.total_steps
 
     debug = ""
     while episode < episodes:
@@ -248,16 +148,19 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
             )
         )
 
-        next_state, reward, done = env.step(action)
+        next_state, reward, is_dead = env.step(action)
 
         agent.remember(
             snake_vision,
             action,
             next_state,
             reward,
-            done,
+            is_dead,
         )
 
+        if len(agent.memory) < 500_000:
+            continue
+        
         agent.train_step(
             GLOBAL_CONFIG.get("batch_size"),
             bucket_index=bucket_index,
@@ -265,49 +168,56 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
 
         if global_step % GLOBAL_CONFIG.get("save_interval") == 0:
             agent.update_target_network()
+            
+            
+        if global_step % print_every == 0:
+            debug += (
+                f"episode {episode}: "
+                f"All Steps: {global_step}, "
+                f"Memory Size: {len(agent.memory)}, "
+                f"Board Size: {board_size}x{board_size}, "
+                f"Epsilon: {agent.get_epsilon(bucket_index):.4f}, "
+                f"Loss: "
+                f"{agent.losses[-1] if agent.losses else None}\n"
+            )
 
-        if not done:
+            debug += agent.evaluate(
+                env,
+                games_per_board=50 if global_step % (print_every*10) == 0 else 5,
+            )
+
+            print(debug)
+            debug = ""
+
+        if not is_dead:
             snake_vision = next_state
             continue
 
         episode += 1
         agent.last_episode = episode
 
-        progress = episode / episodes
+        progress = agent.total_steps / GLOBAL_CONFIG.get("total_steps")
         bucket_index, board_size = sample_board_size(progress)
 
         snake_vision = env.reset(board_size=board_size)
 
-        if episode % print_every == 0:
-            debug += (
-                f"episode {episode}: "
-                f"Step: {global_step}, "
-                f"Epsilon: "
-                f"{agent.get_epsilon(bucket_index):.4f}, "
-                f"Memory Size: {len(agent.memory)}, "
-                f"Loss: "
-                f"{agent.losses[-1] if agent.losses else None}\n"
-            )
+    debug += (
+        f"episode {episode}: "
+        f"All Steps: {global_step}, "
+        f"Memory Size: {len(agent.memory)}, "
+        f"Board Size: {board_size}x{board_size}, "
+        f"Epsilon: {agent.get_epsilon(bucket_index):.4f}, "
+        f"Loss: "
+        f"{agent.losses[-1] if agent.losses else None}\n"
+    )
 
-            debug += f"Episode: {episode}:\n"
+    debug += agent.evaluate(
+        env,
+        games_per_board=20,
+    )
 
-            debug += agent.evaluate(
-                env,
-                board_sizes=[
-                    5, 6, 7, 8, 9, 10,
-                    12, 15,
-                    16, 18, 20,
-                    24, 27, 30,
-                    32, 35, 40, 45, 50,
-                    55, 60, 65, 70, 75,
-                    80, 85, 90, 95, 100,
-                ],
-                games_per_board=5,
-            )
-
-            print(debug)
-            debug = ""
-
+    print(debug)
+    debug = ""
     if agent.losses:
         diffs = np.diff(agent.losses)
         print(
@@ -358,10 +268,9 @@ def main(argv):
                     current_state = game_loop(gfx, env, agent, current_state)
 
     except ValueError as e:
-        print(f"Error: {e}")
+        return print(f"Error: {e}")
     except KeyboardInterrupt:
-        print("\nGame interrupted by user. Exiting...")
-
+        return print("\nGame interrupted by user. Exiting...")
 
 if __name__ == "__main__":
     main(sys.argv[1:])

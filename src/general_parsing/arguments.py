@@ -71,6 +71,10 @@ def parseArguments(argv) -> bool:
             ("gamma", float),
             "Expected Gamma: float"
         ),
+        "--total-steps": (
+            ("total_steps", int),
+            "Expected Total Steps at the end of training: integer"
+        ),
         "--target-steps": (
             ("target_steps", int),
             "Expected Target Steps: integer"
@@ -148,6 +152,10 @@ def parseArguments(argv) -> bool:
             print("AI Hyperparameters:")
             print("  --lr              Learning rate (default: 0.001)")
             print("  --gamma           Discount factor (default: 0.99)")
+            print("  --total-steps     Total steps for training (default: 3,000,000)")
+            print("  --target-steps    Steps between target network updates (default: 500,000)")
+            print("  --episodes        Number of training episodes (default: 5,000)")
+            print("  --batch-size      Batch size for training (default: 128)")
             print("  --epsilon         Initial epsilon value (default: 1.0)")
             print("  --epsilon-decay   Epsilon decay rate (default: 0.995)")
             print("  --min-epsilon     Minimum epsilon value (default: 0.01)")

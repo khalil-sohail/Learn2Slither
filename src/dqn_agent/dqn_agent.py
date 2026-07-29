@@ -37,6 +37,7 @@ class DQNAgent(nn.Module):
         self.learning_rate  = GLOBAL_CONFIG.get("learning_rate")
         self.target_weights = GLOBAL_CONFIG.get("target_weights")
         self.new_weights    = GLOBAL_CONFIG.get("new_weights")
+        self.total_steps     = 0
 
         self.initial_epsilon = 1.0
         
@@ -102,8 +103,7 @@ class DQNAgent(nn.Module):
             Action.UP / Action.DOWN / Action.LEFT / Action.RIGHT).
         """
 
-        explore = explore_mode
-        if explore and random.random() < self.get_epsilon(bucket_index):
+        if explore_mode and random.random() < self.get_epsilon(bucket_index):
             return Action(random.randint(0, 3))
         else:
             state_tensor = torch.FloatTensor(snake_vision).unsqueeze(0)
@@ -177,6 +177,7 @@ class DQNAgent(nn.Module):
         torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=5.0)
         self.optimizer.step()
         self.bucket_steps[bucket_index] += 1
+        self.total_steps += 1
 
 
         self.losses.append(loss.item())
@@ -189,7 +190,7 @@ class DQNAgent(nn.Module):
         """
         self.target_network.load_state_dict(self.q_network.state_dict())
 
-    def save_model(self):
+    def save_model(self, user_blocked_path: str = ""):
         """
         Serializes and saves everything describing the agent's current
         learning state to disk: network weights, optimizer state, and
@@ -197,7 +198,7 @@ class DQNAgent(nn.Module):
         new training session can resume from exactly where the last one
         left off, per the subject's export/import requirement.
         """
-        path = self.new_weights
+        path = self.new_weights if user_blocked_path == "" else user_blocked_path
         if path is not None:
             print(f"Saving model to {path}...")
             torch.save({
@@ -207,6 +208,9 @@ class DQNAgent(nn.Module):
                 "last_episode": self.last_episode,
                 "bucket_steps": self.bucket_steps,
                 "losses": self.losses,
+                "total_steps": self.total_steps,
+                "memory": list(self.memory),
+                
             }, path)
 
     def load_model(self):
@@ -221,7 +225,7 @@ class DQNAgent(nn.Module):
             checkpoint = torch.load(
                 path,
                 map_location=self.device,
-                weights_only=True,
+                weights_only=False,
             )
 
             self.q_network.load_state_dict(checkpoint["q_network"])
@@ -231,64 +235,143 @@ class DQNAgent(nn.Module):
             self.last_episode = checkpoint.get("last_episode", 0)
             self.bucket_steps = checkpoint.get("bucket_steps", [0] * 5)
             self.losses = checkpoint.get("losses", [])
+            self.total_steps = checkpoint.get("total_steps", 0)
+            self.memory = deque(checkpoint.get("memory", []), maxlen=GLOBAL_CONFIG.get("memory_capacity"))
 
-    def __del__(self):
-        """
-        Ensures that the optimizer's state is cleared when the agent is
-        deleted, preventing memory leaks in long-running training sessions.
-        """
-        self.save_model()
+            print(f"Loaded checkpoint:")
+            print(f"  episode      : {self.last_episode}")
+            print(f"  total_steps  : {self.total_steps:,}")
+            print(f"  bucket_steps : {self.bucket_steps}")
+            print(f"  memory size  : {len(self.memory)}")
+            print(f"  losses       : {len(self.losses)} entries")
 
     def evaluate(
         self,
         env: GymnasiumWrapper,
-        board_sizes: list[int],
         games_per_board: int = 20,
     ) -> str:
         """
-        Runs deterministic evaluation (epsilon = 0) on each requested board size
-        and returns a formatted report.
+        Runs deterministic evaluation (epsilon = 0) on every sufficiently trained
+        curriculum bucket and returns a formatted report.
         """
+
+        BUCKETS = [
+            [7, 10, 12, 14, 15],
+            [16, 18, 20, 24, 30],
+            [32, 35, 40, 45, 50],
+            [55, 60, 65, 70, 75],
+            [80, 85, 90, 95, 100],
+        ]
+
+        MIN_BUCKET_STEPS = self.target_steps * 0.2
 
         report = ""
 
-        for board_size in board_sizes:
-            results = []
+        buckets_scores = []
+        buckets_greens = []
+        buckets_reds = []
+        buckets_successes = []
+        for bucket_index, board_sizes in enumerate(BUCKETS):
 
-            for _ in range(games_per_board):
-                state = env.reset(board_size=board_size)
+            if self.bucket_steps[bucket_index] < MIN_BUCKET_STEPS:
+                print(f"Skipping bucket {bucket_index + 1} (not enough training steps: {self.bucket_steps[bucket_index]:,})")
+                continue
 
-                done = False
-                while not done:
-                    action = self.get_action(
-                        state,
-                        explore_mode=False,
-                        bucket_index=0,
-                    )
-
-                    state, _, done = env.step(action)
-
-                score, green, red, _ = env.board.get_board_statistics()
-                results.append((score, green, red))
-
-            avg_score = sum(x[0] for x in results) / len(results)
-            avg_green = sum(x[1] for x in results) / len(results)
-            avg_red = sum(x[2] for x in results) / len(results)
-
-            best_score = max(x[0] for x in results)
-            success_rate = (
-                sum(x[0] > 0 for x in results)
-                / len(results)
-                * 100
-            )
+            bucket_scores = []
+            bucket_greens = []
+            bucket_reds = []
+            bucket_successes = []
 
             report += (
-                f"  {board_size:3}x{board_size}: "
-                f"Avg Score ({len(results)} games): {avg_score:.2f}, "
-                f"Best: {best_score}, "
-                f"Success: {success_rate:.1f}%, "
-                f"Green: {avg_green:.2f}, "
-                f"Red: {avg_red:.2f}\n"
+                f"    Bucket {bucket_index + 1} "
+                f"({self.bucket_steps[bucket_index]:,} steps, "
+                f"Epsilon: {self.get_epsilon(bucket_index):.4f})\n"
             )
 
+
+            for board_size in board_sizes:
+                results = []
+
+                for _ in range(games_per_board):
+                    state = env.reset(board_size=board_size)
+
+                    done = False
+                    while not done:
+                        action = self.get_action(
+                            state,
+                            explore_mode=False,
+                            bucket_index=bucket_index,
+                        )
+
+                        state, _, done = env.step(action)
+
+                    score, green, red, _ = env.board.get_board_statistics()
+                    results.append((score, green, red))
+
+                scores = [x[0] for x in results]
+                greens = [x[1] for x in results]
+                reds = [x[2] for x in results]
+
+                avg_score = np.mean(scores)
+                median_score = np.median(scores)
+                std_score = np.std(scores)
+
+                avg_green = np.mean(greens)
+                avg_red = np.mean(reds)
+
+                best_score = max(scores)
+                worst_score = min(scores)
+                success_rate = np.mean(np.array(scores) > 0) * 100
+
+                bucket_scores.append(avg_score)
+                bucket_greens.append(avg_green)
+                bucket_reds.append(avg_red)
+                bucket_successes.append(success_rate)
+
+                buckets_scores.append(avg_score)
+                buckets_greens.append(avg_green)
+                buckets_reds.append(avg_red)
+                buckets_successes.append(success_rate)
+
+                report += (
+                    f"      {board_size:>3}x{board_size:<3} {games_per_board} "
+                    f"| Avg: {avg_score:>6.2f} "
+                    f"| Median: {median_score:>6.2f} "
+                    f"| Std: {std_score:>6.2f} "
+                    f"| Best: {best_score:>3} "
+                    f"| Worst: {worst_score:>3} "
+                    f"| Success Rate: {success_rate:>6.1f}% "
+                    f"| Green: {avg_green:>6.2f} "
+                    f"| Red: {avg_red:>6.2f}\n"
+                )
+            
+
+            report += (
+                "      -------------------------------------------------------------------------------\n"
+                f"      Avg Score        : {np.mean(bucket_scores):>6.2f}\n"
+                f"      Avg Success Rate : {np.mean(bucket_successes):>6.1f}%\n"
+                f"      Avg Green        : {np.mean(bucket_greens):>6.2f}\n"
+                f"      Avg Red          : {np.mean(bucket_reds):>6.2f}\n"
+                "      -------------------------------------------------------------------------------\n\n"
+            )
+        
+        if len(buckets_scores) == 0:
+            report += "No buckets have been sufficiently trained for evaluation."
+            return report
+        report += (
+            "          -------------------------------------------------------------------------------\n"
+            f"          All Avg Score        : {np.mean(buckets_scores):>6.2f}\n"
+            f"          All Avg Success Rate : {np.mean(buckets_successes):>6.1f}%\n"
+            f"          All Avg Green        : {np.mean(buckets_greens):>6.2f}\n"
+            f"          All Avg Red          : {np.mean(buckets_reds):>6.2f}\n"
+            "          -------------------------------------------------------------------------------\n\n"
+        )
+
         return report
+    
+    
+    def __del__(self):
+        """
+        Ensures that the model is saved when the agent is deleted.
+        """
+        self.save_model()

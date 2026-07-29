@@ -16,15 +16,16 @@ class Config:
         self.reward_step = -0.01
         
         # Neural Network Hyperparameters
-        self.episodes = 5000
+        self.episodes = 5_000
         self.batch_size = 128
         self.learning_rate = 0.001
         self.gamma = 0.99
-        self.target_steps = 500_000
+        self.total_steps = 3_000_000
+        self.target_steps = 555_555
         self.epsilon = 1.0
-        self.epsilon_decay = 0.999996
+        self.epsilon_decay = 0.999_996
         self.min_epsilon = 0.01
-        self.memory_capacity = 100000
+        self.memory_capacity = 1_000_000
         
         # Application & File I/O State
         self.mode = "LOBBY"
@@ -47,6 +48,7 @@ class Config:
             "episodes": int,
             "learning_rate": float,
             "gamma": float,
+            "total_steps": int,
             "target_steps": int,
             "epsilon": float,
             "epsilon_decay": float,
@@ -95,9 +97,13 @@ class Config:
                 "min": 0.0,
                 "max": 1.0
             },
+            "total_steps": {
+                "min": 0,
+                "max": 10_000_000
+            },
             "target_steps": {
                 "min": 1000,
-                "max": 10000000
+                "max": 1000_0000
             },
             "epsilon": {
                 "min": 0.0,
