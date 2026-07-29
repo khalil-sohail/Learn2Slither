@@ -1,18 +1,23 @@
 # this is the main file for the DQN agent.
 
+import math
+
 from app_config.config import GLOBAL_CONFIG
 from constants import Action, AppState
+from collections import deque
 
 import random
-from collections import deque
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import copy
+
+from gymnasium_wrapper.gymnasium_wrapper import GymnasiumWrapper
 
 
 class DQNAgent(nn.Module):
-    def __init__(self, learning_enabled=True):
+    def __init__(self):
         """
         Initializes hyperparameters from GLOBAL_CONFIG, sets up the Replay Memory,
         and instantiates the Q-Network used to approximate the Q function.
@@ -26,44 +31,50 @@ class DQNAgent(nn.Module):
         """
         super(DQNAgent, self).__init__()
         self.memory         = deque(maxlen=GLOBAL_CONFIG.get("memory_capacity"))
-        self.epsilon        = 1
-        self.min_epsilon    = 0.05
+        self.target_steps   = GLOBAL_CONFIG.get("target_steps")
+        self.min_epsilon    = GLOBAL_CONFIG.get("min_epsilon")
+        self.gamma          = GLOBAL_CONFIG.get("gamma")
+        self.learning_rate  = GLOBAL_CONFIG.get("learning_rate")
+        self.target_weights = GLOBAL_CONFIG.get("target_weights")
+        self.new_weights    = GLOBAL_CONFIG.get("new_weights")
+
+        self.initial_epsilon = 1.0
+        
+        self.epsilon_decay = (
+            self.min_epsilon / self.initial_epsilon
+        ) ** (1 / self.target_steps)
+        
+        self.bucket_steps = [0] * 5
+
+        self.last_episode    = 0
         self.losses         = []
-        self.learning_enabled = learning_enabled
         torch.backends.cudnn.benchmark = True
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
         )
 
         self.q_network = nn.Sequential(
-            nn.Linear(16, 128),
+            nn.Linear(20, 256),
             nn.ReLU(),
-            nn.Linear(128, 256),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(128, 4),
+            nn.Linear(256, 4),
         )
         
-        # self.target_network = nn.Sequential(
-        #     nn.Linear(16, 128),
-        #     nn.ReLU(),
-        #     nn.Linear(128, 256),
-        #     nn.ReLU(),
-        #     nn.Linear(256, 128),
-        #     nn.ReLU(),
-        #     nn.Linear(128, 4),
-        # )
+        self.target_network = copy.deepcopy(self.q_network)
+        self.target_network.eval()
 
         self.criterion = nn.SmoothL1Loss()
         self.optimizer = optim.Adam(
             self.parameters(),
-            lr=GLOBAL_CONFIG.get("learning_rate")
+            lr=self.learning_rate
         )
 
         self.to(self.device)
         self.load_model()
-
+    
     def forward(self, x):
         """
         Defines the forward pass of the network.
@@ -72,24 +83,27 @@ class DQNAgent(nn.Module):
         """
         return self.q_network(x.to(self.device))
 
-    def get_action(self, snake_vision, explore_mode=False) -> Action:
+    def get_epsilon(self, bucket_index: int) -> float:
+        return max(
+            self.min_epsilon,
+            self.initial_epsilon *
+            (self.epsilon_decay ** self.bucket_steps[bucket_index])
+        )
+
+    def get_action(self, snake_vision, explore_mode=False, bucket_index: int = 0) -> Action:
         """
         Chooses an action based on the epsilon-greedy policy:
         - With probability epsilon, choose a random action (exploration).
         - With probability (1 - epsilon), choose the action that maximizes the Q-value (exploitation).
-
-        If self.learning_enabled is False, exploration is always disabled
-        regardless of exploit_only, since an evaluation-only agent should
-        never take random actions.
 
         :param snake_vision: A 16-value float32 NumPy array representing the snake's vision.
         :param explore_mode: If True, allows for exploration (random actions).
         :return: The action index to be taken (0-3, corresponding to
             Action.UP / Action.DOWN / Action.LEFT / Action.RIGHT).
         """
-        explore = explore_mode and self.learning_enabled
 
-        if explore and random.random() < self.epsilon:
+        explore = explore_mode
+        if explore and random.random() < self.get_epsilon(bucket_index):
             return Action(random.randint(0, 3))
         else:
             state_tensor = torch.FloatTensor(snake_vision).unsqueeze(0)
@@ -105,9 +119,6 @@ class DQNAgent(nn.Module):
         No-op when learning is disabled, so evaluation runs never mutate
         the agent's learning state.
         """
-        if not self.learning_enabled:
-            return
-
         self.memory.append((
             snake_vision,
             action,
@@ -116,15 +127,12 @@ class DQNAgent(nn.Module):
             done
         ))
 
-    def train_step(self, batch_size, update_epsilon: bool = True):
+    def train_step(self, batch_size, bucket_index: int = 0):
         """
         Trains the neural network by sampling a batch of past experiences
         and applying the Q-learning update rule.
         No-op when learning is disabled (evaluation / exploitation-only mode).
         """
-        if not self.learning_enabled:
-            return
-
         if len(self.memory) < batch_size:
             return
 
@@ -159,8 +167,8 @@ class DQNAgent(nn.Module):
         current_q = self.q_network(states).gather(1, actions)
 
         with torch.no_grad():
-            max_next_q = self.q_network(next_states).amax(dim=1, keepdim=True)
-            target_q = rewards + (1 - dones) * GLOBAL_CONFIG.get("gamma") * max_next_q
+            max_next_q = self.target_network(next_states).amax(dim=1, keepdim=True)
+            target_q = rewards + (1 - dones) * self.gamma * max_next_q
 
         loss = self.criterion(current_q, target_q)
 
@@ -168,23 +176,18 @@ class DQNAgent(nn.Module):
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=5.0)
         self.optimizer.step()
+        self.bucket_steps[bucket_index] += 1
 
-        if self.epsilon > self.min_epsilon and update_epsilon:
-            self.epsilon = max(
-                self.min_epsilon,
-                self.epsilon * GLOBAL_CONFIG.get("epsilon_decay")
-            )
-
-        # with torch.no_grad():
-        #     q = self.q_network(states)
-        # print(
-        #     q.min().item(),
-        #     q.max().item(),
-        #     q.mean().item(),
-        # )
 
         self.losses.append(loss.item())
         return loss.item()
+
+    def update_target_network(self):
+        """
+        Updates the target network's weights to match the current Q-network.
+        This is typically done periodically to stabilize training.
+        """
+        self.target_network.load_state_dict(self.q_network.state_dict())
 
     def save_model(self):
         """
@@ -194,13 +197,17 @@ class DQNAgent(nn.Module):
         new training session can resume from exactly where the last one
         left off, per the subject's export/import requirement.
         """
-        if GLOBAL_CONFIG.get("new_weights") is not None:
+        path = self.new_weights
+        if path is not None:
+            print(f"Saving model to {path}...")
             torch.save({
-                "model_state_dict": self.state_dict(),
+                "q_network": self.q_network.state_dict(),
+                "target_network": self.target_network.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
-                "epsilon": self.epsilon,
-                "memory": self.memory,
-            }, GLOBAL_CONFIG.get("new_weights"))
+                "last_episode": self.last_episode,
+                "bucket_steps": self.bucket_steps,
+                "losses": self.losses,
+            }, path)
 
     def load_model(self):
         """
@@ -208,16 +215,22 @@ class DQNAgent(nn.Module):
         state, and epsilon) from disk, restoring the agent to exactly the
         point it was saved at so training or evaluation can continue.
         """
-        if GLOBAL_CONFIG.get("target_weights") is not None:
+        path = self.target_weights
+        
+        if path is not None:
             checkpoint = torch.load(
-                GLOBAL_CONFIG.get("target_weights"),
+                path,
                 map_location=self.device,
-                weights_only=False
+                weights_only=True,
             )
-            self.load_state_dict(checkpoint["model_state_dict"])
+
+            self.q_network.load_state_dict(checkpoint["q_network"])
+            self.target_network.load_state_dict(checkpoint["target_network"])
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-            self.epsilon = checkpoint["epsilon"]
-            self.memory = checkpoint["memory"]
+
+            self.last_episode = checkpoint.get("last_episode", 0)
+            self.bucket_steps = checkpoint.get("bucket_steps", [0] * 5)
+            self.losses = checkpoint.get("losses", [])
 
     def __del__(self):
         """
@@ -225,3 +238,57 @@ class DQNAgent(nn.Module):
         deleted, preventing memory leaks in long-running training sessions.
         """
         self.save_model()
+
+    def evaluate(
+        self,
+        env: GymnasiumWrapper,
+        board_sizes: list[int],
+        games_per_board: int = 20,
+    ) -> str:
+        """
+        Runs deterministic evaluation (epsilon = 0) on each requested board size
+        and returns a formatted report.
+        """
+
+        report = ""
+
+        for board_size in board_sizes:
+            results = []
+
+            for _ in range(games_per_board):
+                state = env.reset(board_size=board_size)
+
+                done = False
+                while not done:
+                    action = self.get_action(
+                        state,
+                        explore_mode=False,
+                        bucket_index=0,
+                    )
+
+                    state, _, done = env.step(action)
+
+                score, green, red, _ = env.board.get_board_statistics()
+                results.append((score, green, red))
+
+            avg_score = sum(x[0] for x in results) / len(results)
+            avg_green = sum(x[1] for x in results) / len(results)
+            avg_red = sum(x[2] for x in results) / len(results)
+
+            best_score = max(x[0] for x in results)
+            success_rate = (
+                sum(x[0] > 0 for x in results)
+                / len(results)
+                * 100
+            )
+
+            report += (
+                f"  {board_size:3}x{board_size}: "
+                f"Avg Score ({len(results)} games): {avg_score:.2f}, "
+                f"Best: {best_score}, "
+                f"Success: {success_rate:.1f}%, "
+                f"Green: {avg_green:.2f}, "
+                f"Red: {avg_red:.2f}\n"
+            )
+
+        return report

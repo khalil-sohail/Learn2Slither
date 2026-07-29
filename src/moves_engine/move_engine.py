@@ -30,14 +30,14 @@ class MovesEngine:
         Initializes the MovesEngine with the specified board size.
         :param size: The size of the board (number of cells in one dimension).
         """
-        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board_size = GLOBAL_CONFIG.get("board_size")
     
     def reset_board_size(self):
         """
         Resets the board size from the GLOBAL_CONFIG.
         This is useful if the board size is changed during runtime.
         """
-        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board_size = GLOBAL_CONFIG.get("board_size")
 
     def get_next_position(self, head_index, action):
         """

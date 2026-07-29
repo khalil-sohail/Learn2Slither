@@ -11,23 +11,26 @@ class Config:
         self.board_size = 10
         self.fps_cap = 15
         self.reward_green_apple = 1.0
-        self.reward_red_apple = -0.9
-        self.reward_death = -2.0
+        self.reward_red_apple = -1.0
+        self.reward_death = -5.0
         self.reward_step = -0.01
         
         # Neural Network Hyperparameters
         self.episodes = 5000
-        self.batch_size = 64
-        self.learning_rate = 0.00005
-        self.gamma = 0.95
-        self.epsilon_decay = 0.9995
+        self.batch_size = 128
+        self.learning_rate = 0.001
+        self.gamma = 0.99
+        self.target_steps = 500_000
+        self.epsilon = 1.0
+        self.epsilon_decay = 0.999996
+        self.min_epsilon = 0.01
         self.memory_capacity = 100000
         
         # Application & File I/O State
         self.mode = "LOBBY"
         self.target_weights = None
         self.new_weights = None
-        self.save_interval = 1000
+        self.save_interval = 2000
 
         # general configuration
         self.print_vision = False
@@ -44,7 +47,10 @@ class Config:
             "episodes": int,
             "learning_rate": float,
             "gamma": float,
+            "target_steps": int,
+            "epsilon": float,
             "epsilon_decay": float,
+            "min_epsilon": float,
             "memory_capacity": int,
             "mode": str,
             "target_weights": type(None),
@@ -79,7 +85,7 @@ class Config:
             },
             "episodes": {
                 "min": 1,
-                "max": 10000
+                "max": 100000
             },
             "learning_rate": {
                 "min": 0.0001,
@@ -89,7 +95,19 @@ class Config:
                 "min": 0.0,
                 "max": 1.0
             },
+            "target_steps": {
+                "min": 1000,
+                "max": 10000000
+            },
+            "epsilon": {
+                "min": 0.0,
+                "max": 1.0
+            },
             "epsilon_decay": {
+                "min": 0.0,
+                "max": 1.0
+            },
+            "min_epsilon": {
                 "min": 0.0,
                 "max": 1.0
             },
@@ -115,8 +133,8 @@ class Config:
                 "allowed": [str, None, "optional"]
             },
             "save_interval": {
-                "min": 1,
-                "max": 10000
+                "min": 1000,
+                "max": 100000
             },
             "print_vision": {
                 "allowed": [True, False]

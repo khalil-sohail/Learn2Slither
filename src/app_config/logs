@@ -1,0 +1,176 @@
+snake) ➜  src git:(main) ✗ python main.py -b 10 -m TRAIN --new-weights base.pth --weights base.pth 
+episode 30: Step: 5000, Epsilon: 0.7111, Memory Size: 5000, Loss: 0.2503700852394104
+episode 49: Step: 10000, Epsilon: 0.7004, Memory Size: 10000, Loss: 0.7962691187858582
+episode 63: Step: 15000, Epsilon: 0.6926, Memory Size: 15000, Loss: 0.8000854849815369
+episode 87: Step: 20000, Epsilon: 0.6794, Memory Size: 20000, Loss: 0.24550148844718933
+episode 109: Step: 25000, Epsilon: 0.6675, Memory Size: 25000, Loss: 1.4519586563110352
+episode 129: Step: 30000, Epsilon: 0.6569, Memory Size: 30000, Loss: 0.35148611664772034
+episode 151: Step: 35000, Epsilon: 0.6455, Memory Size: 35000, Loss: 0.7089879512786865
+episode 170: Step: 40000, Epsilon: 0.6357, Memory Size: 40000, Loss: 0.3096790909767151
+episode 190: Step: 45000, Epsilon: 0.6256, Memory Size: 45000, Loss: 0.8802729845046997
+Episode: 200, Avg Score (last 200): 0.15, higest score: 2, success rate: 13.5%, Avg Green Apples: 0.16, Avg Red Apples: 0.07
+episode 211: Step: 50000, Epsilon: 0.6152, Memory Size: 50000, Loss: 0.3180379271507263
+episode 229: Step: 55000, Epsilon: 0.6064, Memory Size: 55000, Loss: 0.337341845035553
+episode 254: Step: 60000, Epsilon: 0.5944, Memory Size: 60000, Loss: 0.6795134544372559
+episode 284: Step: 65000, Epsilon: 0.5803, Memory Size: 65000, Loss: 0.2961985468864441
+episode 319: Step: 70000, Epsilon: 0.5643, Memory Size: 70000, Loss: 0.42786192893981934
+episode 345: Step: 75000, Epsilon: 0.5526, Memory Size: 75000, Loss: 0.1917223334312439
+episode 375: Step: 80000, Epsilon: 0.5395, Memory Size: 80000, Loss: 0.2945747971534729
+Episode: 400, Avg Score (last 200): 0.30, higest score: 2, success rate: 23.5%, Avg Green Apples: 0.33, Avg Red Apples: 0.10
+episode 410: Step: 85000, Epsilon: 0.5246, Memory Size: 85000, Loss: 0.46727442741394043
+episode 439: Step: 90000, Epsilon: 0.5126, Memory Size: 90000, Loss: 1.207181453704834
+episode 483: Step: 95000, Epsilon: 0.4949, Memory Size: 95000, Loss: 0.6229597926139832
+episode 520: Step: 100000, Epsilon: 0.4804, Memory Size: 100000, Loss: 0.968646764755249
+episode 554: Step: 105000, Epsilon: 0.4675, Memory Size: 100000, Loss: 0.42459774017333984
+episode 594: Step: 110000, Epsilon: 0.4528, Memory Size: 100000, Loss: 0.29561036825180054
+Episode: 600, Avg Score (last 200): 0.34, higest score: 2, success rate: 28.999999999999996%, Avg Green Apples: 0.35, Avg Red Apples: 0.07
+episode 617: Step: 115000, Epsilon: 0.4445, Memory Size: 100000, Loss: 0.2509118914604187
+episode 634: Step: 120000, Epsilon: 0.4385, Memory Size: 100000, Loss: 0.7080776691436768
+episode 660: Step: 125000, Epsilon: 0.4295, Memory Size: 100000, Loss: 0.41314253211021423
+episode 687: Step: 130000, Epsilon: 0.4203, Memory Size: 100000, Loss: 0.8030147552490234
+episode 726: Step: 135000, Epsilon: 0.4074, Memory Size: 100000, Loss: 0.6460620164871216
+episode 764: Step: 140000, Epsilon: 0.3952, Memory Size: 100000, Loss: 0.6809490919113159
+Episode: 800, Avg Score (last 200): 0.39, higest score: 2, success rate: 31.5%, Avg Green Apples: 0.42, Avg Red Apples: 0.07
+episode 805: Step: 145000, Epsilon: 0.3824, Memory Size: 100000, Loss: 1.187800407409668
+episode 853: Step: 150000, Epsilon: 0.3680, Memory Size: 100000, Loss: 0.7434114217758179
+episode 887: Step: 155000, Epsilon: 0.3581, Memory Size: 100000, Loss: 0.5671291351318359
+episode 926: Step: 160000, Epsilon: 0.3471, Memory Size: 100000, Loss: 1.4340918064117432
+episode 972: Step: 165000, Epsilon: 0.3346, Memory Size: 100000, Loss: 0.28496044874191284
+Episode: 1000, Avg Score (last 200): 0.30, higest score: 2, success rate: 25.5%, Avg Green Apples: 0.31, Avg Red Apples: 0.07
+episode 1008: Step: 170000, Epsilon: 0.3251, Memory Size: 100000, Loss: 0.21159660816192627
+episode 1053: Step: 175000, Epsilon: 0.3136, Memory Size: 100000, Loss: 0.4437480866909027
+episode 1111: Step: 180000, Epsilon: 0.2994, Memory Size: 100000, Loss: 0.6427733302116394
+episode 1167: Step: 185000, Epsilon: 0.2862, Memory Size: 100000, Loss: 0.2735227346420288
+Episode: 1200, Avg Score (last 200): 0.36, higest score: 3, success rate: 31.0%, Avg Green Apples: 0.38, Avg Red Apples: 0.07
+episode 1210: Step: 190000, Epsilon: 0.2766, Memory Size: 100000, Loss: 0.2054002285003662
+episode 1238: Step: 195000, Epsilon: 0.2704, Memory Size: 100000, Loss: 0.4891584515571594
+episode 1278: Step: 200000, Epsilon: 0.2619, Memory Size: 100000, Loss: 0.29882341623306274
+episode 1315: Step: 205000, Epsilon: 0.2543, Memory Size: 100000, Loss: 0.38951367139816284
+episode 1356: Step: 210000, Epsilon: 0.2461, Memory Size: 100000, Loss: 0.22714358568191528
+episode 1395: Step: 215000, Epsilon: 0.2385, Memory Size: 100000, Loss: 0.5690774917602539
+Episode: 1400, Avg Score (last 200): 0.32, higest score: 2, success rate: 28.999999999999996%, Avg Green Apples: 0.34, Avg Red Apples: 0.07
+episode 1443: Step: 220000, Epsilon: 0.2295, Memory Size: 100000, Loss: 0.45129692554473877
+episode 1491: Step: 225000, Epsilon: 0.2209, Memory Size: 100000, Loss: 0.1938190460205078
+episode 1517: Step: 230000, Epsilon: 0.2163, Memory Size: 100000, Loss: 0.37694036960601807
+episode 1575: Step: 235000, Epsilon: 0.2065, Memory Size: 100000, Loss: 0.574941098690033
+Episode: 1600, Avg Score (last 200): 0.27, higest score: 3, success rate: 25.5%, Avg Green Apples: 0.28, Avg Red Apples: 0.10
+episode 1606: Step: 240000, Epsilon: 0.2014, Memory Size: 100000, Loss: 0.23032590746879578
+episode 1648: Step: 245000, Epsilon: 0.1948, Memory Size: 100000, Loss: 0.29160571098327637
+episode 1685: Step: 250000, Epsilon: 0.1891, Memory Size: 100000, Loss: 0.6516992449760437
+episode 1740: Step: 255000, Epsilon: 0.1810, Memory Size: 100000, Loss: 0.10406007617712021
+episode 1780: Step: 260000, Epsilon: 0.1753, Memory Size: 100000, Loss: 1.236163854598999
+Episode: 1800, Avg Score (last 200): 0.35, higest score: 2, success rate: 31.0%, Avg Green Apples: 0.36, Avg Red Apples: 0.07
+episode 1815: Step: 265000, Epsilon: 0.1704, Memory Size: 100000, Loss: 0.7885023355484009
+episode 1850: Step: 270000, Epsilon: 0.1657, Memory Size: 100000, Loss: 0.8359212279319763
+episode 1892: Step: 275000, Epsilon: 0.1602, Memory Size: 100000, Loss: 0.25826001167297363
+episode 1927: Step: 280000, Epsilon: 0.1558, Memory Size: 100000, Loss: 0.06738251447677612
+episode 1955: Step: 285000, Epsilon: 0.1524, Memory Size: 100000, Loss: 0.12668488919734955
+episode 1990: Step: 290000, Epsilon: 0.1481, Memory Size: 100000, Loss: 0.33093371987342834
+Episode: 2000, Avg Score (last 200): 0.40, higest score: 3, success rate: 32.0%, Avg Green Apples: 0.43, Avg Red Apples: 0.09
+episode 2041: Step: 295000, Epsilon: 0.1422, Memory Size: 100000, Loss: 0.11820639669895172
+episode 2065: Step: 300000, Epsilon: 0.1395, Memory Size: 100000, Loss: 0.06961346417665482
+episode 2102: Step: 305000, Epsilon: 0.1354, Memory Size: 100000, Loss: 0.32481423020362854
+episode 2136: Step: 310000, Epsilon: 0.1318, Memory Size: 100000, Loss: 0.1291889250278473
+episode 2155: Step: 315000, Epsilon: 0.1298, Memory Size: 100000, Loss: 0.1861342489719391
+episode 2181: Step: 320000, Epsilon: 0.1271, Memory Size: 100000, Loss: 0.18250548839569092
+Episode: 2200, Avg Score (last 200): 0.46, higest score: 2, success rate: 38.5%, Avg Green Apples: 0.51, Avg Red Apples: 0.09
+episode 2205: Step: 325000, Epsilon: 0.1247, Memory Size: 100000, Loss: 0.14081010222434998
+episode 2248: Step: 330000, Epsilon: 0.1205, Memory Size: 100000, Loss: 0.28988590836524963
+episode 2282: Step: 335000, Epsilon: 0.1173, Memory Size: 100000, Loss: 0.20461280643939972
+episode 2317: Step: 340000, Epsilon: 0.1140, Memory Size: 100000, Loss: 0.10003985464572906
+episode 2348: Step: 345000, Epsilon: 0.1112, Memory Size: 100000, Loss: 0.05349810793995857
+episode 2391: Step: 350000, Epsilon: 0.1075, Memory Size: 100000, Loss: 0.05416032671928406
+Episode: 2400, Avg Score (last 200): 0.45, higest score: 2, success rate: 37.0%, Avg Green Apples: 0.46, Avg Red Apples: 0.03
+episode 2437: Step: 355000, Epsilon: 0.1036, Memory Size: 100000, Loss: 0.26072126626968384
+episode 2475: Step: 360000, Epsilon: 0.1005, Memory Size: 100000, Loss: 0.1354995220899582
+episode 2505: Step: 365000, Epsilon: 0.0981, Memory Size: 100000, Loss: 0.1505373865365982
+episode 2539: Step: 370000, Epsilon: 0.0955, Memory Size: 100000, Loss: 0.0968855693936348
+episode 2579: Step: 375000, Epsilon: 0.0925, Memory Size: 100000, Loss: 0.18339641392230988
+Episode: 2600, Avg Score (last 200): 0.41, higest score: 3, success rate: 33.5%, Avg Green Apples: 0.43, Avg Red Apples: 0.04
+episode 2615: Step: 380000, Epsilon: 0.0898, Memory Size: 100000, Loss: 0.15881554782390594
+episode 2644: Step: 385000, Epsilon: 0.0878, Memory Size: 100000, Loss: 0.16828368604183197
+episode 2687: Step: 390000, Epsilon: 0.0848, Memory Size: 100000, Loss: 0.2642044425010681
+episode 2724: Step: 395000, Epsilon: 0.0823, Memory Size: 100000, Loss: 0.10200393944978714
+episode 2759: Step: 400000, Epsilon: 0.0801, Memory Size: 100000, Loss: 0.057223014533519745
+episode 2795: Step: 405000, Epsilon: 0.0778, Memory Size: 100000, Loss: 0.10752778500318527
+Episode: 2800, Avg Score (last 200): 0.56, higest score: 3, success rate: 45.0%, Avg Green Apples: 0.58, Avg Red Apples: 0.04
+episode 2833: Step: 410000, Epsilon: 0.0755, Memory Size: 100000, Loss: 0.18364384770393372
+episode 2865: Step: 415000, Epsilon: 0.0735, Memory Size: 100000, Loss: 0.08322089910507202
+episode 2894: Step: 420000, Epsilon: 0.0719, Memory Size: 100000, Loss: 0.37980902194976807
+episode 2917: Step: 425000, Epsilon: 0.0705, Memory Size: 100000, Loss: 0.08961109817028046
+episode 2938: Step: 430000, Epsilon: 0.0694, Memory Size: 100000, Loss: 0.34336966276168823
+episode 2967: Step: 435000, Epsilon: 0.0678, Memory Size: 100000, Loss: 0.19777821004390717
+episode 2989: Step: 440000, Epsilon: 0.0666, Memory Size: 100000, Loss: 0.3416522145271301
+Episode: 3000, Avg Score (last 200): 0.73, higest score: 3, success rate: 60.0%, Avg Green Apples: 0.76, Avg Red Apples: 0.06
+episode 3018: Step: 445000, Epsilon: 0.0651, Memory Size: 100000, Loss: 0.47876131534576416
+episode 3042: Step: 450000, Epsilon: 0.0638, Memory Size: 100000, Loss: 0.09222612529993057
+episode 3069: Step: 455000, Epsilon: 0.0625, Memory Size: 100000, Loss: 0.17508293688297272
+episode 3093: Step: 460000, Epsilon: 0.0613, Memory Size: 100000, Loss: 0.07555443048477173
+episode 3107: Step: 465000, Epsilon: 0.0606, Memory Size: 100000, Loss: 0.08943408727645874
+episode 3127: Step: 470000, Epsilon: 0.0596, Memory Size: 100000, Loss: 0.06790611147880554
+episode 3144: Step: 475000, Epsilon: 0.0588, Memory Size: 100000, Loss: 0.09625724703073502
+episode 3163: Step: 480000, Epsilon: 0.0579, Memory Size: 100000, Loss: 0.2998104393482208
+episode 3181: Step: 485000, Epsilon: 0.0571, Memory Size: 100000, Loss: 0.08255715668201447
+episode 3199: Step: 490000, Epsilon: 0.0563, Memory Size: 100000, Loss: 0.1746908575296402
+Episode: 3200, Avg Score (last 200): 0.72, higest score: 3, success rate: 56.00000000000001%, Avg Green Apples: 0.74, Avg Red Apples: 0.09
+episode 3218: Step: 495000, Epsilon: 0.0554, Memory Size: 100000, Loss: 0.0905848890542984
+episode 3234: Step: 500000, Epsilon: 0.0547, Memory Size: 100000, Loss: 0.15141424536705017
+episode 3243: Step: 505000, Epsilon: 0.0543, Memory Size: 100000, Loss: 0.04640161618590355
+episode 3261: Step: 510000, Epsilon: 0.0536, Memory Size: 100000, Loss: 0.3498317003250122
+episode 3278: Step: 515000, Epsilon: 0.0528, Memory Size: 100000, Loss: 0.0474429652094841
+episode 3286: Step: 520000, Epsilon: 0.0525, Memory Size: 100000, Loss: 0.055642951279878616
+episode 3303: Step: 525000, Epsilon: 0.0518, Memory Size: 100000, Loss: 0.08831901848316193
+episode 3316: Step: 530000, Epsilon: 0.0513, Memory Size: 100000, Loss: 0.05415637046098709
+episode 3326: Step: 535000, Epsilon: 0.0509, Memory Size: 100000, Loss: 0.06322576105594635
+episode 3336: Step: 540000, Epsilon: 0.0504, Memory Size: 100000, Loss: 0.12246936559677124
+episode 3353: Step: 545000, Epsilon: 0.0498, Memory Size: 100000, Loss: 0.08393857628107071
+episode 3366: Step: 550000, Epsilon: 0.0493, Memory Size: 100000, Loss: 0.11048583686351776
+episode 3383: Step: 555000, Epsilon: 0.0486, Memory Size: 100000, Loss: 0.08605005592107773
+episode 3397: Step: 560000, Epsilon: 0.0480, Memory Size: 100000, Loss: 0.10975901782512665
+Episode: 3400, Avg Score (last 200): 0.57, higest score: 3, success rate: 44.0%, Avg Green Apples: 0.62, Avg Red Apples: 0.12
+episode 3406: Step: 565000, Epsilon: 0.0477, Memory Size: 100000, Loss: 0.12267638742923737
+episode 3417: Step: 570000, Epsilon: 0.0473, Memory Size: 100000, Loss: 0.07645218074321747
+episode 3428: Step: 575000, Epsilon: 0.0469, Memory Size: 100000, Loss: 0.11602453142404556
+episode 3441: Step: 580000, Epsilon: 0.0464, Memory Size: 100000, Loss: 0.12437866628170013
+episode 3450: Step: 585000, Epsilon: 0.0460, Memory Size: 100000, Loss: 0.13416695594787598
+episode 3465: Step: 590000, Epsilon: 0.0455, Memory Size: 100000, Loss: 0.11100855469703674
+episode 3483: Step: 595000, Epsilon: 0.0448, Memory Size: 100000, Loss: 0.22589485347270966
+episode 3490: Step: 600000, Epsilon: 0.0446, Memory Size: 100000, Loss: 0.10001445561647415
+episode 3504: Step: 605000, Epsilon: 0.0441, Memory Size: 100000, Loss: 0.1793196052312851
+episode 3514: Step: 610000, Epsilon: 0.0438, Memory Size: 100000, Loss: 0.19963660836219788
+episode 3528: Step: 615000, Epsilon: 0.0433, Memory Size: 100000, Loss: 0.17803938686847687
+episode 3541: Step: 620000, Epsilon: 0.0428, Memory Size: 100000, Loss: 0.2350953221321106
+episode 3555: Step: 625000, Epsilon: 0.0423, Memory Size: 100000, Loss: 0.20999464392662048
+episode 3566: Step: 630000, Epsilon: 0.0420, Memory Size: 100000, Loss: 0.3550316095352173
+episode 3578: Step: 635000, Epsilon: 0.0416, Memory Size: 100000, Loss: 0.5089081525802612
+episode 3590: Step: 640000, Epsilon: 0.0412, Memory Size: 100000, Loss: 0.24145612120628357
+Episode: 3600, Avg Score (last 200): 0.24, higest score: 3, success rate: 19.0%, Avg Green Apples: 0.25, Avg Red Apples: 0.10
+episode 3603: Step: 645000, Epsilon: 0.0407, Memory Size: 100000, Loss: 0.1716124266386032
+episode 3612: Step: 650000, Epsilon: 0.0405, Memory Size: 100000, Loss: 0.2732738256454468
+episode 3625: Step: 655000, Epsilon: 0.0400, Memory Size: 100000, Loss: 0.2507917881011963
+episode 3640: Step: 660000, Epsilon: 0.0396, Memory Size: 100000, Loss: 0.22110368311405182
+episode 3651: Step: 665000, Epsilon: 0.0392, Memory Size: 100000, Loss: 0.2994110584259033
+episode 3660: Step: 670000, Epsilon: 0.0389, Memory Size: 100000, Loss: 0.3317064642906189
+episode 3674: Step: 675000, Epsilon: 0.0385, Memory Size: 100000, Loss: 0.20639407634735107
+episode 3683: Step: 680000, Epsilon: 0.0382, Memory Size: 100000, Loss: 0.3346513509750366
+episode 3702: Step: 685000, Epsilon: 0.0376, Memory Size: 100000, Loss: 0.24724718928337097
+episode 3713: Step: 690000, Epsilon: 0.0373, Memory Size: 100000, Loss: 0.2716142535209656
+episode 3725: Step: 695000, Epsilon: 0.0370, Memory Size: 100000, Loss: 0.38591909408569336
+episode 3738: Step: 700000, Epsilon: 0.0366, Memory Size: 100000, Loss: 0.43325749039649963
+episode 3750: Step: 705000, Epsilon: 0.0362, Memory Size: 100000, Loss: 0.38716089725494385
+episode 3759: Step: 710000, Epsilon: 0.0360, Memory Size: 100000, Loss: 0.2854846715927124
+episode 3770: Step: 715000, Epsilon: 0.0356, Memory Size: 100000, Loss: 0.35411372780799866
+episode 3778: Step: 720000, Epsilon: 0.0354, Memory Size: 100000, Loss: 0.21232742071151733
+episode 3792: Step: 725000, Epsilon: 0.0350, Memory Size: 100000, Loss: 0.39986011385917664
+Episode: 3800, Avg Score (last 200): 0.20, higest score: 3, success rate: 15.0%, Avg Green Apples: 0.22, Avg Red Apples: 0.09
+episode 3801: Step: 730000, Epsilon: 0.0348, Memory Size: 100000, Loss: 0.35126709938049316
+episode 3816: Step: 735000, Epsilon: 0.0344, Memory Size: 100000, Loss: 0.5371849536895752
+episode 3824: Step: 740000, Epsilon: 0.0341, Memory Size: 100000, Loss: 0.28675323724746704
+episode 3841: Step: 745000, Epsilon: 0.0337, Memory Size: 100000, Loss: 0.569787859916687
+episode 3855: Step: 750000, Epsilon: 0.0333, Memory Size: 100000, Loss: 0.6261729001998901
+episode 3870: Step: 755000, Epsilon: 0.0329, Memory Size: 100000, Loss: 0.27809882164001465
+episode 3884: Step: 760000, Epsilon: 0.0325, Memory Size: 100000, Loss: 0.716995894908905
+episode 3897: Step: 765000, Epsilon: 0.0322, Memory Size: 100000, Loss: 0.4235549569129944
+episode 3914: Step: 770000, Epsilon: 0.0318, Memory Size: 100000, Loss: 0.43524783849716187
+episode 3935: Step: 775000, Epsilon: 0.0312, Memory Size: 100000, Loss: 0.9629875421524048
+episode 3948: Step: 780000, Epsilon: 0.0309, Memory Size: 100000, Loss: 0.6416600942611694

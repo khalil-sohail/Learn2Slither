@@ -31,13 +31,22 @@ class GraphicsEngine:
         :param fps: The frames per second for rendering.
         """
         pygame.init()
-        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board_size = GLOBAL_CONFIG.get("board_size")
+        self.fps_cap = GLOBAL_CONFIG.get("fps_cap")
         self.screen = pygame.display.set_mode((window_size, window_size), pygame.HIDDEN)
         self.clock = pygame.time.Clock()
         self.window_size = window_size
         self.font = pygame.font.SysFont("Arial", 24, bold=True)
         self.textures = self._load_textures()
         self.screen = pygame.display.set_mode((window_size, window_size))
+    
+    def refresh(self):
+        """
+        Forces the engine to reload and rescale all image assets 
+        """
+        self.board_size = GLOBAL_CONFIG.get("board_size")
+        self.fps_cap = GLOBAL_CONFIG.get("fps_cap")
+        self.textures = self._load_textures()
 
     @property
     def cell_size(self):
@@ -120,13 +129,6 @@ class GraphicsEngine:
         textures[Entity.SNAKE_TAIL_DOWN] = pygame.transform.rotate(textures[Entity.SNAKE_TAIL_UP], 180)
         
         return textures
-
-    def refresh_textures(self):
-        """
-        Forces the engine to reload and rescale all image assets 
-        """
-        self.board_size = GLOBAL_CONFIG.get('board_size')
-        self.textures = self._load_textures()
 
     def render_live_results_statistics(
             self,
@@ -272,7 +274,7 @@ class GraphicsEngine:
                     return AppState.LOBBY
 
             pygame.display.flip()
-            self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
+            self.clock.tick(self.fps_cap)
 
         return current_state
 
@@ -352,7 +354,7 @@ class GraphicsEngine:
                 red_apple_eaten=red_apple_eaten
             )
             pygame.display.flip()
-            self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
+            self.clock.tick(self.fps_cap)
 
         return current_state
 
@@ -498,7 +500,7 @@ class GraphicsEngine:
                     self.input_buffer += event.unicode
 
         pygame.display.flip()
-        self.clock.tick(GLOBAL_CONFIG.get('fps_cap'))
+        self.clock.tick(self.fps_cap)
 
         return AppState.CONFIG
 

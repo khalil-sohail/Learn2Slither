@@ -59,7 +59,8 @@ class BoardState:
         Initializes the BoardState with the specified size.
         :param size: The size of the board (number of cells in one dimension).
         """
-        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board_size = GLOBAL_CONFIG.get("board_size")
+        self.print_vision = GLOBAL_CONFIG.get("print_vision")
         self.board = np.zeros((self.board_size * self.board_size), dtype=int)
         self.body = deque()
         self.red_apple = deque()
@@ -68,13 +69,13 @@ class BoardState:
         self.green_apple_eaten = 0
         self.board_score = 0
         self.head_index: int = 0
-        self.tail_direction = Entity.SNAKE_TAIL_LEFT
 
     def reset_game(self):
         """
         Resets the game state, clearing the board and placing the initial snake head and apples.
         """
-        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board_size = GLOBAL_CONFIG.get("board_size")
+        self.print_vision = GLOBAL_CONFIG.get("print_vision")
         self.board = np.zeros((self.board_size * self.board_size), dtype=int)
         self.body.clear()
         self.red_apple.clear()
@@ -82,7 +83,6 @@ class BoardState:
         self.red_apple_eaten = 0
         self.green_apple_eaten = 0
         self.board_score = 0
-        self.tail_direction = Entity.SNAKE_TAIL_LEFT
 
         self.board.fill(Entity.EMPTY)
         self.board[:self.board_size] = Entity.WALL
@@ -199,16 +199,29 @@ class BoardState:
 
     def get_snake_vision_vector(self):
         """
-        Calculates and returns the 16-value float32 NumPy array representing what the snake sees in its current state.
-        The vision vector consists of 4 features for each of the 4 cardinal directions (North, East, South, West):
-            - Distance to Wall (Inverted to v=1/d for normalization)
-            - Distance to Nearest Body Segment (v=1/d, or 0 if none)
-            - Distance to Nearest Green Apple (v=1/d, or 0 if none)
-            - Distance to Nearest Red Apple (v=1/d, or 0 if none)
-        :return: A 16-value float32 NumPy array representing the snake's vision.
+        Calculates and returns the 20-value float32 NumPy array representing what
+        the snake sees in its current state.
+
+        Distances are normalized per-axis using dimensions inferred purely from
+        the plus-shaped vision itself (board_height = north + south + 1,
+        board_width = east + west + 1) — not from any externally known board_size —
+        so the encoding stays consistent regardless of the actual board dimensions.
+
+        Layout (4 values per direction, N/E/S/W order):
+            - Wall/position feature: (dimension - distance) / (dimension - 1)
+            - Body distance:  same normalization, -1.0 if no body segment on this ray
+            - Green apple distance: same normalization, -1.0 if none
+            - Red apple distance:   same normalization, -1.0 if none
+        Final 4 values: one-hot current heading (agent state, not board info).
+        :return: A 20-value float32 NumPy array.
         """
-        vision_vector = np.zeros(16, dtype=np.float32)
-        directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]  # North, East, South, West
+        vision_vector = np.zeros(20, dtype=np.float32)
+        directions = [
+            (-1, 0),    # North
+            (0, 1),     # East
+            (1, 0),     # South
+            (0, -1)     # West
+        ]
         head_row = self.head_index // self.board_size
         head_col = self.head_index % self.board_size
         
@@ -218,50 +231,81 @@ class BoardState:
             (1, 0): [],
             (0, -1): []
         }
-
+        
+        BODY = [
+            Entity.SNAKE_BODY,
+            Entity.SNAKE_TAIL_UP,
+            Entity.SNAKE_TAIL_DOWN,
+            Entity.SNAKE_TAIL_LEFT,
+            Entity.SNAKE_TAIL_RIGHT
+        ]
         for i, (dr, dc) in enumerate(directions):
-            distance_to_wall = 0
-            distance_to_body = 0
-            distance_to_green_apple = 0
-            distance_to_red_apple = 0
+            distance = 0
+            body_distance = 0
+            green_distance = 0
+            red_distance = 0
 
             row, col = head_row, head_col
             while True:
                 row += dr
                 col += dc
-                distance_to_wall += 1
 
-                if row < 0 or row >= self.board_size or col < 0 or col >= self.board_size:
-                    rays_chars[(dr, dc)].append("W")
+                if (row < 0 or row >= self.board_size or col < 0 or col >= self.board_size):
                     break
+
+                distance += 1
 
                 index = row * self.board_size + col
-                cell_value = self.board[index]
+                cell = self.board[index]
 
-                if cell_value in (Entity.SNAKE_BODY, Entity.SNAKE_TAIL_UP, Entity.SNAKE_TAIL_DOWN, Entity.SNAKE_TAIL_LEFT, Entity.SNAKE_TAIL_RIGHT):
-                    rays_chars[(dr, dc)].append("S")
-                    if distance_to_body == 0:
-                        distance_to_body = distance_to_wall
-                elif cell_value == Entity.GREEN_APPLE:
-                    rays_chars[(dr, dc)].append("G")
-                    if distance_to_green_apple == 0:
-                        distance_to_green_apple = distance_to_wall
-                elif cell_value == Entity.RED_APPLE:
-                    rays_chars[(dr, dc)].append("R")
-                    if distance_to_red_apple == 0:
-                        distance_to_red_apple = distance_to_wall
-                elif cell_value == Entity.WALL:
-                    rays_chars[(dr, dc)].append("W")
+                if cell == Entity.WALL:
+                    rays_chars[(dr, dc)].append('W')
                     break
+                elif cell in BODY:
+                    rays_chars[(dr, dc)].append('S')
+                    if body_distance == 0: body_distance = distance
+                elif cell == Entity.GREEN_APPLE:
+                    rays_chars[(dr, dc)].append('G')
+                    if green_distance == 0: green_distance = distance
+                elif cell == Entity.RED_APPLE:
+                    rays_chars[(dr, dc)].append('R')
+                    if red_distance == 0: red_distance = distance
                 else:
-                    rays_chars[(dr, dc)].append("0")
+                    rays_chars[(dr, dc)].append('0')
 
-            vision_vector[i * 4] = 1.0 / distance_to_wall if distance_to_wall > 0 else 0.0
-            vision_vector[i * 4 + 1] = 1.0 / distance_to_body if distance_to_body > 0 else 0.0
-            vision_vector[i * 4 + 2] = 1.0 / distance_to_green_apple if distance_to_green_apple > 0 else 0.0
-            vision_vector[i * 4 + 3] = 1.0 / distance_to_red_apple if distance_to_red_apple > 0 else 0.0
+            vision_vector[i*4] = distance
+            vision_vector[i*4+1] = body_distance if body_distance else -1.0
+            vision_vector[i*4+2] = green_distance if green_distance else -1.0
+            vision_vector[i*4+3] = red_distance if red_distance else -1.0
 
-        if GLOBAL_CONFIG.get("print_vision"):
+        north, east, south, west = vision_vector[0], vision_vector[4], vision_vector[8], vision_vector[12]
+        board_height = north + south + 1
+        board_width  = east + west + 1
+        
+        for i in range(4):
+            dimension = board_height if i in (0, 2) else board_width  # Important: N,S; height, E,W; width
+            for j in range(4):
+                idx = i * 4 + j
+                value = vision_vector[idx]
+                if value == -1.0:
+                    continue
+                vision_vector[idx] = (dimension - value) / (dimension - 1)
+
+        heading = np.zeros(4, dtype=np.float32)
+        head = self.board[self.head_index]
+
+        if head == Entity.SNAKE_HEAD_UP:
+            heading[0] = 1.0
+        elif head == Entity.SNAKE_HEAD_RIGHT:
+            heading[1] = 1.0
+        elif head == Entity.SNAKE_HEAD_DOWN:
+            heading[2] = 1.0
+        elif head == Entity.SNAKE_HEAD_LEFT:
+            heading[3] = 1.0
+
+        vision_vector[16:] = heading
+            
+        if self.print_vision:
             west_str = "".join(reversed(rays_chars[(0, -1)]))
             east_str = "".join(rays_chars[(0, 1)])
             padding = " " * len(west_str)

@@ -71,9 +71,21 @@ def parseArguments(argv) -> bool:
             ("gamma", float),
             "Expected Gamma: float"
         ),
+        "--target-steps": (
+            ("target_steps", int),
+            "Expected Target Steps: integer"
+        ),
         "--epsilon": (
             ("epsilon_decay", float),
             "Expected Epsilon Decay: float"
+        ),
+        "--epsilon-decay": (
+            ("epsilon_decay", float),
+            "Expected Epsilon Decay: float"
+        ),
+        "--min-epsilon": (
+            ("min_epsilon", float),
+            "Expected Minimum Epsilon: float"
         ),
         "--memory": (
             ("memory_capacity", int),
@@ -118,7 +130,7 @@ def parseArguments(argv) -> bool:
 
         # General Configuration
         "--print-vision": (
-            ("print_vision", str), "Expected vision printing option: string (True/False)"
+            ("print_vision", bool), "Expected vision printing option: boolean (True/False)"
         )
     }
 
@@ -136,7 +148,9 @@ def parseArguments(argv) -> bool:
             print("AI Hyperparameters:")
             print("  --lr              Learning rate (default: 0.001)")
             print("  --gamma           Discount factor (default: 0.99)")
-            print("  --epsilon         Epsilon decay rate (default: 0.995)")
+            print("  --epsilon         Initial epsilon value (default: 1.0)")
+            print("  --epsilon-decay   Epsilon decay rate (default: 0.995)")
+            print("  --min-epsilon     Minimum epsilon value (default: 0.01)")
             print("  --memory          Replay buffer capacity")
             print("Rewards:")
             print("  --reward-red-apple    Float reward for eating red apple (default: -1.0)")

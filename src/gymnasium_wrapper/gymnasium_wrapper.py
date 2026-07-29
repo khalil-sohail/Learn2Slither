@@ -28,20 +28,33 @@ class GymnasiumWrapper(gym.Env):
         :param board_size: The size of the board (number of cells in one dimension).
         """
         self.action_space = spaces.Discrete(4)
-        self.board_size = GLOBAL_CONFIG.get('board_size')
+        self.board_size = GLOBAL_CONFIG.get("board_size")
+        self.red_apple_reward = GLOBAL_CONFIG.get("reward_red_apple")
+        self.green_apple_reward = GLOBAL_CONFIG.get("reward_green_apple")
+        self.death_reward = GLOBAL_CONFIG.get("reward_death")
+        self.step_reward = GLOBAL_CONFIG.get("reward_step")
+        self.reward_timeout = 8.0
         self.observation_space = spaces.Box(low=0, high=4, shape=(self.board_size * self.board_size,), dtype=np.int32)
         self.board = BoardState()
         self.physics = MovesEngine()
         self.steps_since_last_green_apple = 0
 
-    def reset(self):
+    def reset(self, board_size: int = -1):
         """
         Resets the environment to an initial state.
         :return: The initial observation.
         """
         self.observation_space = spaces.Box(low=0, high=4, shape=(self.board_size * self.board_size,), dtype=np.int32)
         self.steps_since_last_green_apple = 0
-        self.board_size = GLOBAL_CONFIG.get('board_size')
+
+        if (board_size != -1 and board_size != self.board_size):
+            GLOBAL_CONFIG.update("board_size", board_size)
+            self.board_size = board_size
+            
+        self.red_apple_reward = GLOBAL_CONFIG.get("reward_red_apple")
+        self.green_apple_reward = GLOBAL_CONFIG.get("reward_green_apple")
+        self.death_reward = GLOBAL_CONFIG.get("reward_death")
+        self.step_reward = GLOBAL_CONFIG.get("reward_step")
         self.board.reset_game()
         self.physics.reset_board_size()
         return self.board.get_snake_vision_vector()
@@ -68,43 +81,31 @@ class GymnasiumWrapper(gym.Env):
 
         return self.board.get_snake_vision_vector(), reward, done or is_dead
 
-    def _calculate_reward(self, is_dead: bool, ate_red_apple: bool, ate_green_apple: bool):
-        """Calculates the reward for the current step."""
-        done = False
-        reward = 0
-        
-        if ate_red_apple:
-            reward += GLOBAL_CONFIG.get("reward_red_apple")
+    def _calculate_reward(self, is_dead, ate_red_apple, ate_green_apple):
+        reward = 0.0
 
         if ate_green_apple:
             self.steps_since_last_green_apple = 0
-            reward += GLOBAL_CONFIG.get("reward_green_apple")
+            reward += self.green_apple_reward
         else:
             self.steps_since_last_green_apple += 1
 
+        if ate_red_apple:
+            reward += self.red_apple_reward
+
         if is_dead:
-            reward += GLOBAL_CONFIG.get("reward_death")
+            reward += self.death_reward
+            return reward, True
 
-        board_size = self.board_size
-        head = self.board.head_index
+        timeout_limit = max(100, self.board_size * 20)
 
-        def manhattan(index1, index2):
-            x1, y1 = index1 % board_size, index1 // board_size
-            x2, y2 = index2 % board_size, index2 // board_size
-            return abs(x1 - x2) + abs(y1 - y2)
+        if self.steps_since_last_green_apple >= timeout_limit:
+            reward += self.reward_timeout
+            return reward, True
 
-        distance = min(
-            manhattan(head, self.board.green_apple[0]),
-            manhattan(head, self.board.green_apple[1]),
-        )
-        ratio = self.steps_since_last_green_apple / max(distance, 1)
-        reward_step = -0.01 - min((ratio / 10.0) ** 2, 1.0)
-            
-        s = self.steps_since_last_green_apple
-        reward_step = -0.01 - min(
-            (s / 100.0) ** 2 * 0.5,
-            1.0
-        )
+        hunger_ratio = self.steps_since_last_green_apple / timeout_limit
 
-        return reward + reward_step, done
+        reward += self.step_reward
+        reward -= 0.1 * hunger_ratio * hunger_ratio
 
+        return reward, False
