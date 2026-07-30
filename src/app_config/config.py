@@ -14,28 +14,26 @@ class Config:
         self.reward_red_apple = -1.0
         self.reward_death = -5.0
         self.reward_step = -0.01
+        self.reward_timeout = -8.0
         
-        # Neural Network Hyperparameters
-        self.episodes = 5_000
-        self.batch_size = 128
+        # DQN Hyperparameters
         self.learning_rate = 0.001
         self.gamma = 0.99
-        self.total_steps = 3_000_000
-        self.target_steps = 555_555
-        self.epsilon = 1.0
-        self.epsilon_decay = 0.999_996
-        self.min_epsilon = 0.01
-        self.memory_capacity = 1_000_000
+        self.target_weights = None
+        self.new_weights = None
+        self.target_steps = 4000
+
+        self.end_total_steps = 20000
+        # self.end_total_steps = 3_000_000
+        self.episodes = 5_000
+        self.batch_size = 128
         
         # Application & File I/O State
         self.mode = "LOBBY"
-        self.target_weights = None
-        self.new_weights = None
         self.save_interval = 2000
 
         # general configuration
         self.print_vision = False
-        # self.window_size = ()
 
         # expected input/types for each configuration parameter
         self._expected_types = {
@@ -45,18 +43,16 @@ class Config:
             "reward_red_apple": float,
             "reward_death": float,
             "reward_step": float,
-            "episodes": int,
+            "reward_timeout": float,
             "learning_rate": float,
             "gamma": float,
-            "total_steps": int,
-            "target_steps": int,
-            "epsilon": float,
-            "epsilon_decay": float,
-            "min_epsilon": float,
-            "memory_capacity": int,
-            "mode": str,
             "target_weights": type(None),
             "new_weights": type(None),
+            "target_steps": int,
+            "end_total_steps": int,
+            "episodes": int,
+            "batch_size": int,
+            "mode": str,
             "save_interval": int,
             "print_vision": bool
         }
@@ -85,9 +81,9 @@ class Config:
                 "min": -1.0,
                 "max": 1.0
             },
-            "episodes": {
-                "min": 1,
-                "max": 100000
+            "reward_timeout": {
+                "min": -10.0,
+                "max": 10.0
             },
             "learning_rate": {
                 "min": 0.0001,
@@ -97,46 +93,39 @@ class Config:
                 "min": 0.0,
                 "max": 1.0
             },
-            "total_steps": {
-                "min": 0,
-                "max": 10_000_000
+            "target_weights": {
+                "allowed": [str, None, "must_exist"]
+            },
+            "new_weights": {
+                "allowed": [str, None, "optional"]
             },
             "target_steps": {
                 "min": 1000,
                 "max": 1000_0000
             },
-            "epsilon": {
-                "min": 0.0,
-                "max": 1.0
+            "end_total_steps": {
+                "min": 0,
+                "max": 10_000_000
             },
-            "epsilon_decay": {
-                "min": 0.0,
-                "max": 1.0
+            "episodes": {
+                "min": 1,
+                "max": 100000
             },
-            "min_epsilon": {
-                "min": 0.0,
-                "max": 1.0
-            },
-            "memory_capacity": {
-                "min": 1000,
-                "max": 1000000
+            "batch_size": {
+                "min": 1,
+                "max": 10000
             },
             "mode": {
                 "allowed": [
                     "LOBBY",
                     "CONFIG",
+                    "EVALUATE",
                     "TRAIN",
                     "HUMAN_PLAYING",
                     "WATCH_TRAIN",
                     "AGENT_PLAYING",
                     "EXIT"
                 ]
-            },
-            "target_weights": {
-                "allowed": [str, None, "must_exist"]
-            },
-            "new_weights": {
-                "allowed": [str, None, "optional"]
             },
             "save_interval": {
                 "min": 1000,
@@ -238,8 +227,6 @@ class Config:
             "reward_step": self.reward_step,
             "learning_rate": self.learning_rate,
             "gamma": self.gamma,
-            "epsilon_decay": self.epsilon_decay,
-            "memory_capacity": self.memory_capacity,
             "mode": self.mode,
             "target_weights": self.target_weights,
             "save_interval": self.save_interval,

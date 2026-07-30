@@ -18,7 +18,7 @@ def checkMode(mode):
     :return: The validated mode if it's allowed.
     :raises ValueError: If the mode is not allowed.
     """
-    valid_modes = ["LOBBY", "CONFIG", "TRAIN", "HUMAN_PLAYING", "WATCH_TRAIN", "AGENT_PLAYING", "EXIT"]
+    valid_modes = ["LOBBY", "CONFIG", "EVALUATE", "TRAIN", "HUMAN_PLAYING", "WATCH_TRAIN", "AGENT_PLAYING", "EXIT"]
     if mode not in valid_modes:
         raise ValueError(f"Invalid mode: {mode}. Valid modes are: {valid_modes}")
     return mode
@@ -31,11 +31,11 @@ def parseArguments(argv) -> bool:
     arg_map: dict[str, tuple] = {
         "-m": (
             ("mode", checkMode),
-            "Expected Modes: LOBBY, CONFIG, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"
+            "Expected Modes: LOBBY, CONFIG, EVALUATE, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"
         ),
         "--mode": (
             ("mode", checkMode),
-            "Expected Modes: LOBBY, CONFIG, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"
+            "Expected Modes: LOBBY, CONFIG, EVALUATE, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"
         ),
         "-b": (
             ("board_size", int),
@@ -57,7 +57,7 @@ def parseArguments(argv) -> bool:
         # Neural Network Flags
         "-e": (
             ("episodes", int),
-            "Expected Episodes: integer"
+            "Expected Episodes (training games): integer"
         ),
         "--batch-size": (
             ("batch_size", int),
@@ -72,28 +72,12 @@ def parseArguments(argv) -> bool:
             "Expected Gamma: float"
         ),
         "--total-steps": (
-            ("total_steps", int),
+            ("end_total_steps", int),
             "Expected Total Steps at the end of training: integer"
         ),
         "--target-steps": (
             ("target_steps", int),
             "Expected Target Steps: integer"
-        ),
-        "--epsilon": (
-            ("epsilon_decay", float),
-            "Expected Epsilon Decay: float"
-        ),
-        "--epsilon-decay": (
-            ("epsilon_decay", float),
-            "Expected Epsilon Decay: float"
-        ),
-        "--min-epsilon": (
-            ("min_epsilon", float),
-            "Expected Minimum Epsilon: float"
-        ),
-        "--memory": (
-            ("memory_capacity", int),
-            "Expected Memory Capacity: integer"
         ),
         
         # Reward Flags
@@ -116,6 +100,10 @@ def parseArguments(argv) -> bool:
         "--reward-step": (
             ("reward_step", float),
             "Expected Reward for Each Step: float"
+        ),
+        "--reward-timeout": (
+            ("reward_timeout", float),
+            "Expected Reward for Timeout: float"
         ),
         
         # File I/O Flags
@@ -146,7 +134,7 @@ def parseArguments(argv) -> bool:
             print("Help requested. Displaying help information...")
             print("Usage: python main.py [options]")
             print("Environment Options:")
-            print("  -m, --mode        Mode ('LOBBY', 'CONFIG', 'TRAIN', 'HUMAN_PLAYING', 'WATCH_TRAIN', 'AGENT_PLAYING', 'EXIT')")
+            print("  -m, --mode        Mode ('LOBBY', 'CONFIG', 'EVALUATE', 'TRAIN', 'HUMAN_PLAYING', 'WATCH_TRAIN', 'AGENT_PLAYING', 'EXIT')")
             print("  -b, --board       Board size (e.g., 10, 20)")
             print("  -f, --fps         Frames per second limit")
             print("AI Hyperparameters:")
@@ -156,15 +144,12 @@ def parseArguments(argv) -> bool:
             print("  --target-steps    Steps between target network updates (default: 500,000)")
             print("  --episodes        Number of training episodes (default: 5,000)")
             print("  --batch-size      Batch size for training (default: 128)")
-            print("  --epsilon         Initial epsilon value (default: 1.0)")
-            print("  --epsilon-decay   Epsilon decay rate (default: 0.995)")
-            print("  --min-epsilon     Minimum epsilon value (default: 0.01)")
-            print("  --memory          Replay buffer capacity")
             print("Rewards:")
             print("  --reward-red-apple    Float reward for eating red apple (default: -1.0)")
             print("  --reward-green-apple    Float reward for eating green apple (default: 1.0)")
             print("  --reward-death    Float penalty for dying (default: -2.0)")
             print("  --reward-step     Float penalty per tick (default: -0.01)")
+            print("  --reward-timeout    Float reward for timeout (default: -8.0)")
             print("Files:")
             print("  --weights         Path to .pt file to load")
             print("  --new-weights     Path to .pt file to load")

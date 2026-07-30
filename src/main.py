@@ -7,6 +7,8 @@ from general_parsing import parseArguments
 from constants import Action, AppState
 from app_config import GLOBAL_CONFIG
 from dqn_agent import DQNAgent
+from utilize import sample_board_size
+
 import pygame
 import sys
 import numpy as np
@@ -70,7 +72,7 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
 
         next_snake_vision, reward, is_dead = env.step(action)
         if current_state == AppState.WATCH_TRAIN:
-            agent.remember(snake_vision, action, next_snake_vision, reward, is_dead)
+            agent.remember(0, snake_vision, action, next_snake_vision, reward, is_dead)
             agent.train_step(batch_size=GLOBAL_CONFIG.get("batch_size"))
 
         if current_state in [
@@ -93,47 +95,15 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
 
     return AppState.LOBBY
 
-BUCKETS = [
-    [5, 6, 7, 8, 9, 10, 12, 14, 15],
-    [16, 18, 20, 23, 25, 28, 30],
-    [32, 35, 40, 45, 50],
-    [55, 60, 65, 70, 75],
-    [80, 85, 90, 95, 100],
-]
-
-def sample_board_size(progress: float) -> tuple[int, int]:
-
-    if progress < 0.2:
-        weights = [0.90, 0.08, 0.02, 0.00, 0.00]
-    elif progress < 0.4:
-        weights = [0.75, 0.18, 0.06, 0.01, 0.00]
-    elif progress < 0.6:
-        weights = [0.60, 0.22, 0.13, 0.04, 0.01]
-    elif progress < 0.8:
-        weights = [0.45, 0.25, 0.18, 0.10, 0.02]
-    elif progress < 0.9:
-        weights = [0.15, 0.20, 0.30, 0.25, 0.10]
-    else:
-        weights = [0.05, 0.10, 0.35, 0.35, 0.15]
-    bucket_index = random.choices(
-        range(len(BUCKETS)),
-        weights=weights,
-        k=1,
-    )[0]
-
-    board_size = random.choice(BUCKETS[bucket_index])
-
-    return bucket_index, board_size
-
 def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
     episodes = GLOBAL_CONFIG.get("episodes")
     episode = agent.last_episode
 
-    bucket_index, board_size = sample_board_size(episode / episodes)
+    bucket_index, board_size = sample_board_size(episode / episodes, agent.bucket_steps)
     snake_vision = env.reset(board_size=board_size)
 
-    print_every = 10000
-
+    print_every = 2000
+    printing = True
     global_step = agent.total_steps
 
     debug = ""
@@ -151,6 +121,7 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
         next_state, reward, is_dead = env.step(action)
 
         agent.remember(
+            bucket_index,
             snake_vision,
             action,
             next_state,
@@ -158,19 +129,16 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
             is_dead,
         )
 
-        if len(agent.memory) < 500_000:
-            continue
-        
         agent.train_step(
             GLOBAL_CONFIG.get("batch_size"),
-            bucket_index=bucket_index,
+            bucket_index,
         )
 
         if global_step % GLOBAL_CONFIG.get("save_interval") == 0:
             agent.update_target_network()
             
             
-        if global_step % print_every == 0:
+        if global_step % print_every == 0 and printing:
             debug += (
                 f"episode {episode}: "
                 f"All Steps: {global_step}, "
@@ -196,37 +164,38 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
         episode += 1
         agent.last_episode = episode
 
-        progress = agent.total_steps / GLOBAL_CONFIG.get("total_steps")
-        bucket_index, board_size = sample_board_size(progress)
+        progress = agent.total_steps / GLOBAL_CONFIG.get("end_total_steps")
+        bucket_index, board_size = sample_board_size(progress, agent.bucket_steps)
 
         snake_vision = env.reset(board_size=board_size)
 
-    debug += (
-        f"episode {episode}: "
-        f"All Steps: {global_step}, "
-        f"Memory Size: {len(agent.memory)}, "
-        f"Board Size: {board_size}x{board_size}, "
-        f"Epsilon: {agent.get_epsilon(bucket_index):.4f}, "
-        f"Loss: "
-        f"{agent.losses[-1] if agent.losses else None}\n"
-    )
-
-    debug += agent.evaluate(
-        env,
-        games_per_board=20,
-    )
-
-    print(debug)
-    debug = ""
-    if agent.losses:
-        diffs = np.diff(agent.losses)
-        print(
-            f"Training completed after {episodes} episodes. "
-            f"Loss diff mean: {diffs.mean():.6f}, "
-            f"std: {diffs.std():.6f}"
+    if printing:
+        debug += (
+            f"episode {episode}: "
+            f"All Steps: {global_step}, "
+            f"Memory Size: {len(agent.memory)}, "
+            f"Board Size: {board_size}x{board_size}, "
+            f"Epsilon: {agent.get_epsilon(bucket_index):.4f}, "
+            f"Loss: "
+            f"{agent.losses[-1] if agent.losses else None}\n"
         )
-    else:
-        print(f"Training completed after {episodes} episodes.")
+
+        debug += agent.evaluate(
+            env,
+            games_per_board=20,
+        )
+
+        print(debug)
+        debug = ""
+        if agent.losses:
+            diffs = np.diff(agent.losses)
+            print(
+                f"Training completed after {episodes} episodes. "
+                f"Loss diff mean: {diffs.mean():.6f}, "
+                f"std: {diffs.std():.6f}"
+            )
+        else:
+            print(f"Training completed after {episodes} episodes.")
 
     return AppState.LOBBY
 
@@ -234,6 +203,7 @@ def main(argv):
     try:
         if parseArguments(argv) is False:
             return
+        # print(f"Configuration loaded: {GLOBAL_CONFIG.to_dict()}")
     except ValueError as e:
         print(f"Error: {e}")
         return
@@ -242,17 +212,20 @@ def main(argv):
     current_state: AppState = AppState[GLOBAL_CONFIG.get("mode")]
     try:
         gfx = None
-        if current_state != AppState.TRAIN:
+        if current_state not in [AppState.TRAIN, AppState.EVALUATE]:
             gfx = GraphicsEngine(window_size)
         env = GymnasiumWrapper()
         agent = DQNAgent()
 
         while current_state != AppState.EXIT:
-            if current_state == AppState.TRAIN or gfx is None:
+            if current_state == AppState.TRAIN:
                 current_state = train_game_loop(env, agent)
                 if gfx is None:
                     gfx = GraphicsEngine(window_size)
-            else:
+            elif current_state == AppState.EVALUATE:
+                print(agent.evaluate(env, games_per_board=5))
+                break
+            elif gfx is not None:
                 if current_state == AppState.LOBBY:
                     current_state = gfx.render_lobby()
                 elif current_state == AppState.CONFIG:

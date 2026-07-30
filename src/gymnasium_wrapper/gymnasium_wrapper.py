@@ -33,7 +33,7 @@ class GymnasiumWrapper(gym.Env):
         self.green_apple_reward = GLOBAL_CONFIG.get("reward_green_apple")
         self.death_reward = GLOBAL_CONFIG.get("reward_death")
         self.step_reward = GLOBAL_CONFIG.get("reward_step")
-        self.reward_timeout = -8.0
+        self.reward_timeout = GLOBAL_CONFIG.get("reward_timeout")
         self.observation_space = spaces.Box(low=0, high=4, shape=(self.board_size * self.board_size,), dtype=np.int32)
         self.board = BoardState()
         self.physics = MovesEngine()
@@ -55,6 +55,7 @@ class GymnasiumWrapper(gym.Env):
         self.green_apple_reward = GLOBAL_CONFIG.get("reward_green_apple")
         self.death_reward = GLOBAL_CONFIG.get("reward_death")
         self.step_reward = GLOBAL_CONFIG.get("reward_step")
+        self.reward_timeout = GLOBAL_CONFIG.get("reward_timeout")
         self.board.reset_game()
         self.physics.reset_board_size()
         return self.board.get_snake_vision_vector()

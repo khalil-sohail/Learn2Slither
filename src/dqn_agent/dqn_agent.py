@@ -1,10 +1,7 @@
-# this is the main file for the DQN agent.
-
-import math
-
 from app_config.config import GLOBAL_CONFIG
 from constants import Action, AppState
 from collections import deque
+from .memory import Transition
 
 import random
 import torch
@@ -30,14 +27,17 @@ class DQNAgent(nn.Module):
             "Exploitation without learning").
         """
         super(DQNAgent, self).__init__()
-        self.memory         = deque(maxlen=GLOBAL_CONFIG.get("memory_capacity"))
-        self.target_steps   = GLOBAL_CONFIG.get("target_steps")
-        self.min_epsilon    = GLOBAL_CONFIG.get("min_epsilon")
-        self.gamma          = GLOBAL_CONFIG.get("gamma")
+        
         self.learning_rate  = GLOBAL_CONFIG.get("learning_rate")
+        self.gamma          = GLOBAL_CONFIG.get("gamma")
+        self.target_steps   = GLOBAL_CONFIG.get("target_steps")
         self.target_weights = GLOBAL_CONFIG.get("target_weights")
         self.new_weights    = GLOBAL_CONFIG.get("new_weights")
+
+        self.memory_capacity = 200_000
+        self.memory         = [deque(maxlen=self.memory_capacity) for _ in range(5)]
         self.total_steps     = 0
+        self.min_epsilon    = 0.01
 
         self.initial_epsilon = 1.0
         
@@ -113,59 +113,59 @@ class DQNAgent(nn.Module):
 
             return Action(torch.argmax(q_values).item())
 
-    def remember(self, snake_vision, action, next_snake_vision, reward, done):
+    def remember(self, bucket_index: int, snake_vision: np.ndarray, action: Action, next_snake_vision: np.ndarray, reward: float, done: bool):
         """
         Appends the (state, action, reward, next_state, done) tuple to the replay memory deque.
         No-op when learning is disabled, so evaluation runs never mutate
         the agent's learning state.
         """
-        self.memory.append((
-            snake_vision,
-            action,
-            next_snake_vision,
-            reward,
-            done
-        ))
+        self.memory[bucket_index].append(
+            Transition(
+                state=snake_vision,
+                action=action,
+                next_state=next_snake_vision,
+                reward=reward,
+                done=done,
+            )
+        )
 
-    def train_step(self, batch_size, bucket_index: int = 0):
+    def train_step(self, batch_size: int, bucket_index: int = 0):
         """
         Trains the neural network by sampling a batch of past experiences
         and applying the Q-learning update rule.
         No-op when learning is disabled (evaluation / exploitation-only mode).
         """
-        if len(self.memory) < batch_size:
+        if len(self.memory[bucket_index]) < batch_size:
             return
 
-        batch = random.sample(self.memory, batch_size)
-        snake_vision, action, next_snake_vision, reward, done = zip(*batch)
-        states = torch.from_numpy(
-            np.array(snake_vision, dtype=np.float32)
-        ).to(self.device)
-
-        next_states = torch.from_numpy(
-            np.array(next_snake_vision, dtype=np.float32)
-        ).to(self.device)
-
+        batch: list[Transition] = random.sample(self.memory[bucket_index], batch_size)
+        states = torch.tensor(
+            np.array([t.state for t in batch]),
+            dtype=torch.float32,
+            device=self.device,
+        )
         actions = torch.tensor(
-            action,
+            [t.action for t in batch],
             dtype=torch.long,
-            device=self.device
+            device=self.device,
         ).unsqueeze(1)
-
+        next_states = torch.tensor(
+            np.array([t.next_state for t in batch]),
+            dtype=torch.float32,
+            device=self.device,
+        )
         rewards = torch.tensor(
-            reward,
+            [t.reward for t in batch],
             dtype=torch.float32,
-            device=self.device
+            device=self.device,
         ).unsqueeze(1)
-
         dones = torch.tensor(
-            done,
+            [t.done for t in batch],
             dtype=torch.float32,
-            device=self.device
+            device=self.device,
         ).unsqueeze(1)
 
         current_q = self.q_network(states).gather(1, actions)
-
         with torch.no_grad():
             max_next_q = self.target_network(next_states).amax(dim=1, keepdim=True)
             target_q = rewards + (1 - dones) * self.gamma * max_next_q
@@ -178,7 +178,6 @@ class DQNAgent(nn.Module):
         self.optimizer.step()
         self.bucket_steps[bucket_index] += 1
         self.total_steps += 1
-
 
         self.losses.append(loss.item())
         return loss.item()
@@ -209,8 +208,7 @@ class DQNAgent(nn.Module):
                 "bucket_steps": self.bucket_steps,
                 "losses": self.losses,
                 "total_steps": self.total_steps,
-                "memory": list(self.memory),
-                
+                "memory": [list(bucket) for bucket in self.memory],
             }, path)
 
     def load_model(self):
@@ -236,13 +234,13 @@ class DQNAgent(nn.Module):
             self.bucket_steps = checkpoint.get("bucket_steps", [0] * 5)
             self.losses = checkpoint.get("losses", [])
             self.total_steps = checkpoint.get("total_steps", 0)
-            self.memory = deque(checkpoint.get("memory", []), maxlen=GLOBAL_CONFIG.get("memory_capacity"))
+            self.memory = deque(checkpoint.get("memory", []), maxlen=self.memory_capacity)
 
             print(f"Loaded checkpoint:")
             print(f"  episode      : {self.last_episode}")
             print(f"  total_steps  : {self.total_steps:,}")
             print(f"  bucket_steps : {self.bucket_steps}")
-            print(f"  memory size  : {len(self.memory)}")
+            print(f"  memory size  : {[len(self.memory[i]) for i in range(5)]}")
             print(f"  losses       : {len(self.losses)} entries")
 
     def evaluate(
@@ -300,7 +298,6 @@ class DQNAgent(nn.Module):
                         action = self.get_action(
                             state,
                             explore_mode=False,
-                            bucket_index=bucket_index,
                         )
 
                         state, _, done = env.step(action)
