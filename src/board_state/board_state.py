@@ -199,23 +199,24 @@ class BoardState:
 
     def get_snake_vision_vector(self):
         """
-        Calculates and returns the 20-value float32 NumPy array representing what
+        Calculates and returns the 29-value float32 NumPy array representing what
         the snake sees in its current state.
 
-        Distances are normalized per-axis using dimensions inferred purely from
-        the plus-shaped vision itself (board_height = north + south + 1,
-        board_width = east + west + 1) — not from any externally known board_size —
-        so the encoding stays consistent regardless of the actual board dimensions.
-
-        Layout (4 values per direction, N/E/S/W order):
-            - Wall/position feature: (dimension - distance) / (dimension - 1)
-            - Body distance:  same normalization, -1.0 if no body segment on this ray
-            - Green apple distance: same normalization, -1.0 if none
-            - Red apple distance:   same normalization, -1.0 if none
-        Final 4 values: one-hot current heading (agent state, not board info).
-        :return: A 20-value float32 NumPy array.
+        Layout:
+            [0:16]  4 features per direction (N,E,S,W order): wall/position,
+                    body distance, green apple distance, red apple distance
+                    (same normalization scheme as before)
+            [16:20] one-hot current heading (agent state, not board info) #####this feature must be removed, violates the subject rules.#####
+            [20:23] local density features over all visible (plus-shape) cells:
+                    /*local_body_density, local_free_density*/, local_wall_density,
+                    local_green_density, local_red_density
+            [23:27] immediate danger flags (N,E,S,W order): 1.0 if the very next
+                    cell in that direction is a wall or body segment, else 0.0
+            [27]    normalized board width (board_width / 100)
+            [28]    normalized board height (board_height / 100)
+        :return: A 29-value float32 NumPy array.
         """
-        vision_vector = np.zeros(20, dtype=np.float32)
+        vision_vector = np.zeros(29, dtype=np.float32)
         directions = [
             (-1, 0),    # North
             (0, 1),     # East
@@ -224,14 +225,14 @@ class BoardState:
         ]
         head_row = self.head_index // self.board_size
         head_col = self.head_index % self.board_size
-        
+
         rays_chars = {
             (-1, 0): [],
             (0, 1): [],
             (1, 0): [],
             (0, -1): []
         }
-        
+
         BODY = [
             Entity.SNAKE_BODY,
             Entity.SNAKE_TAIL_UP,
@@ -239,6 +240,16 @@ class BoardState:
             Entity.SNAKE_TAIL_LEFT,
             Entity.SNAKE_TAIL_RIGHT
         ]
+
+        # Global counters, accumulated across ALL four rays
+        body_count = 0
+        empty_count = 0
+        wall_count = 0
+        green_count = 0
+        red_count = 0
+
+        danger = [0.0, 0.0, 0.0, 0.0]  # N, E, S, W
+
         for i, (dr, dc) in enumerate(directions):
             distance = 0
             body_distance = 0
@@ -258,42 +269,50 @@ class BoardState:
                 index = row * self.board_size + col
                 cell = self.board[index]
 
+                if distance == 1:
+                    danger[i] = 1.0 if (cell == Entity.WALL or cell in BODY) else 0.0
+
                 if cell == Entity.WALL:
                     rays_chars[(dr, dc)].append('W')
+                    wall_count += 1
                     break
                 elif cell in BODY:
                     rays_chars[(dr, dc)].append('S')
+                    body_count += 1
                     if body_distance == 0: body_distance = distance
                 elif cell == Entity.GREEN_APPLE:
                     rays_chars[(dr, dc)].append('G')
+                    green_count += 1
                     if green_distance == 0: green_distance = distance
                 elif cell == Entity.RED_APPLE:
                     rays_chars[(dr, dc)].append('R')
+                    red_count += 1
                     if red_distance == 0: red_distance = distance
                 else:
                     rays_chars[(dr, dc)].append('0')
+                    empty_count += 1
 
             vision_vector[i*4] = distance
-            vision_vector[i*4+1] = body_distance if body_distance else -1.0
-            vision_vector[i*4+2] = green_distance if green_distance else -1.0
-            vision_vector[i*4+3] = red_distance if red_distance else -1.0
+            vision_vector[i*4+1] = body_distance if body_distance else 0.0
+            vision_vector[i*4+2] = green_distance if green_distance else 0.0
+            vision_vector[i*4+3] = red_distance if red_distance else 0.0
 
         north, east, south, west = vision_vector[0], vision_vector[4], vision_vector[8], vision_vector[12]
         board_height = north + south + 1
         board_width  = east + west + 1
-        
+
         for i in range(4):
-            dimension = board_height if i in (0, 2) else board_width  # Important: N,S; height, E,W; width
+            dimension = board_height if i in (0, 2) else board_width  # N,S: height, E,W: width
             for j in range(4):
                 idx = i * 4 + j
                 value = vision_vector[idx]
-                if value == -1.0:
+                if value == 0.0:
                     continue
-                vision_vector[idx] = (dimension - value) / (dimension - 1)
+                vision_vector[idx] = 1.0 - (value - 1) / (dimension - 1)
+                # vision_vector[idx] = (dimension - value) / (dimension - 1)
 
         heading = np.zeros(4, dtype=np.float32)
         head = self.board[self.head_index]
-
         if head == Entity.SNAKE_HEAD_UP:
             heading[0] = 1.0
         elif head == Entity.SNAKE_HEAD_RIGHT:
@@ -302,20 +321,42 @@ class BoardState:
             heading[2] = 1.0
         elif head == Entity.SNAKE_HEAD_LEFT:
             heading[3] = 1.0
+        vision_vector[16:20] = heading
 
-        vision_vector[16:] = heading
-            
+        visible_cells = body_count + empty_count + wall_count + green_count + red_count
+        if visible_cells == 0:
+            # Shouldn't happen (every ray scans at least its own wall cell),
+            # guard anyway rather than divide by zero.
+            # local_body_density = local_free_density = 0.0
+            local_wall_density = 0.0
+            local_green_density = local_red_density = 0.0
+        else:
+            # local_body_density  = body_count  / visible_cells
+            # local_free_density  = empty_count / visible_cells
+            local_wall_density  = wall_count  / visible_cells
+            local_green_density = green_count / visible_cells
+            local_red_density   = red_count   / visible_cells
+
+        # vision_vector[20] = local_body_density
+        # vision_vector[21] = local_free_density
+        vision_vector[20] = local_wall_density
+        vision_vector[21] = local_green_density
+        vision_vector[22] = local_red_density
+
+        vision_vector[23:27] = danger
+        vision_vector[27] = board_width / 100
+        vision_vector[28] = board_height / 100
+
         if self.print_vision:
             west_str = "".join(reversed(rays_chars[(0, -1)]))
             east_str = "".join(rays_chars[(0, 1)])
             padding = " " * len(west_str)
-        
-            print() 
+            print()
             for char in reversed(rays_chars[(-1, 0)]):
                 print(padding + char)
             print(west_str + "H" + east_str)
             for char in rays_chars[(1, 0)]:
                 print(padding + char)
-            print() 
+            print()
 
         return vision_vector

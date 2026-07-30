@@ -102,7 +102,7 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
     bucket_index, board_size = sample_board_size(episode / episodes, agent.bucket_steps)
     snake_vision = env.reset(board_size=board_size)
 
-    print_every = 2000
+    print_every = 100000
     printing = True
     global_step = agent.total_steps
 
@@ -137,22 +137,25 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
         if global_step % GLOBAL_CONFIG.get("save_interval") == 0:
             agent.update_target_network()
             
-            
+        if global_step % 200_000 == 0:
+            agent.save_model("models/base_checkpoint_" + str(global_step) + ".pth")
+
         if global_step % print_every == 0 and printing:
             debug += (
                 f"episode {episode}: "
-                f"All Steps: {global_step}, "
-                f"Memory Size: {len(agent.memory)}, "
+                f"All Steps: {global_step} ({agent.total_steps/GLOBAL_CONFIG.get("end_total_steps"):.4f}), "
+                f"Memory Size: {len(agent.memory[bucket_index])}, "
                 f"Board Size: {board_size}x{board_size}, "
                 f"Epsilon: {agent.get_epsilon(bucket_index):.4f}, "
                 f"Loss: "
-                f"{agent.losses[-1] if agent.losses else None}\n"
+                f"{agent.losses[-1] if agent.losses else None}\n\n"
             )
 
             debug += agent.evaluate(
                 env,
-                games_per_board=50 if global_step % (print_every*10) == 0 else 5,
+                games_per_board=10,
             )
+            
 
             print(debug)
             debug = ""
@@ -223,7 +226,7 @@ def main(argv):
                 if gfx is None:
                     gfx = GraphicsEngine(window_size)
             elif current_state == AppState.EVALUATE:
-                print(agent.evaluate(env, games_per_board=5))
+                print(agent.evaluate(env, games_per_board=GLOBAL_CONFIG.get("evaluate_model")))
                 break
             elif gfx is not None:
                 if current_state == AppState.LOBBY:
@@ -244,6 +247,8 @@ def main(argv):
         return print(f"Error: {e}")
     except KeyboardInterrupt:
         return print("\nGame interrupted by user. Exiting...")
+
+    agent.save_model()
 
 if __name__ == "__main__":
     main(sys.argv[1:])

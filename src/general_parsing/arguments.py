@@ -37,6 +37,10 @@ def parseArguments(argv) -> bool:
             ("mode", checkMode),
             "Expected Modes: LOBBY, CONFIG, EVALUATE, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"
         ),
+        "-eval": (
+            ("evaluate_model", int),
+            "Expected games per board: integer"
+        ),
         "-b": (
             ("board_size", int),
             "Expected Board Size: integer between 5 and 100"
@@ -135,6 +139,7 @@ def parseArguments(argv) -> bool:
             print("Usage: python main.py [options]")
             print("Environment Options:")
             print("  -m, --mode        Mode ('LOBBY', 'CONFIG', 'EVALUATE', 'TRAIN', 'HUMAN_PLAYING', 'WATCH_TRAIN', 'AGENT_PLAYING', 'EXIT')")
+            print("  -eval             Number of games per board for evaluation (default: 50)")
             print("  -b, --board       Board size (e.g., 10, 20)")
             print("  -f, --fps         Frames per second limit")
             print("AI Hyperparameters:")

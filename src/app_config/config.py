@@ -14,19 +14,20 @@ class Config:
         self.reward_red_apple = -1.0
         self.reward_death = -5.0
         self.reward_step = -0.01
-        self.reward_timeout = -8.0
+        self.reward_timeout = -10.0
         
         # DQN Hyperparameters
         self.learning_rate = 0.001
         self.gamma = 0.99
         self.target_weights = None
         self.new_weights = None
-        self.target_steps = 4000
+        self.target_steps = 1_000_000
 
-        self.end_total_steps = 20000
-        # self.end_total_steps = 3_000_000
+        self.end_total_steps = 6_000_000
         self.episodes = 5_000
         self.batch_size = 128
+        
+        self.evaluate_model = 50
         
         # Application & File I/O State
         self.mode = "LOBBY"
@@ -52,6 +53,7 @@ class Config:
             "end_total_steps": int,
             "episodes": int,
             "batch_size": int,
+            "evaluate_model": int,
             "mode": str,
             "save_interval": int,
             "print_vision": bool
@@ -114,6 +116,10 @@ class Config:
             "batch_size": {
                 "min": 1,
                 "max": 10000
+            },
+            "evaluate_model": {
+                "min": 1,
+                "max": 1000
             },
             "mode": {
                 "allowed": [

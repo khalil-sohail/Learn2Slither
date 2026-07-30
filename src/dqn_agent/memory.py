@@ -8,3 +8,4 @@ class Transition:
     next_state: np.ndarray
     reward: float
     done: bool
+

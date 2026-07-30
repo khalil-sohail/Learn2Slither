@@ -1,3 +1,5 @@
+import os
+
 from app_config.config import GLOBAL_CONFIG
 from constants import Action, AppState
 from collections import deque
@@ -38,7 +40,6 @@ class DQNAgent(nn.Module):
         self.memory         = [deque(maxlen=self.memory_capacity) for _ in range(5)]
         self.total_steps     = 0
         self.min_epsilon    = 0.01
-
         self.initial_epsilon = 1.0
         
         self.epsilon_decay = (
@@ -55,9 +56,9 @@ class DQNAgent(nn.Module):
         )
 
         self.q_network = nn.Sequential(
-            nn.Linear(20, 256),
+            nn.Linear(29, 512),
             nn.ReLU(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 256),
             nn.ReLU(),
             nn.Linear(256, 256),
             nn.ReLU(),
@@ -138,7 +139,33 @@ class DQNAgent(nn.Module):
         if len(self.memory[bucket_index]) < batch_size:
             return
 
-        batch: list[Transition] = random.sample(self.memory[bucket_index], batch_size)
+        bucket_progress = self.bucket_steps[bucket_index] / self.target_steps
+        old_fraction = max(
+            0.20,
+            0.30 * (1 - bucket_progress)
+        )
+        current_fraction = 1 - old_fraction
+
+        current_size = int(batch_size * current_fraction)
+        batch = random.sample(self.memory[bucket_index], current_size)
+        remaining = batch_size - current_size
+
+        if bucket_index > 0:
+            previous = list(range(bucket_index))
+            weights = np.arange(1, bucket_index + 1, dtype=float)
+            weights /= weights.sum()
+            counts = np.random.multinomial(remaining, weights)
+
+            for bucket, count in zip(previous, counts):
+                if count:
+                    batch.extend(
+                        random.sample(
+                            self.memory[bucket],
+                            min(count, len(self.memory[bucket]))
+                        )
+                    )
+
+        random.shuffle(batch)
         states = torch.tensor(
             np.array([t.state for t in batch]),
             dtype=torch.float32,
@@ -199,7 +226,8 @@ class DQNAgent(nn.Module):
         """
         path = self.new_weights if user_blocked_path == "" else user_blocked_path
         if path is not None:
-            print(f"Saving model to {path}...")
+            if os.path.exists(os.path.dirname(path)):
+                path = f"models/fallback_checkpoint_{self.total_steps}.pth"
             torch.save({
                 "q_network": self.q_network.state_dict(),
                 "target_network": self.target_network.state_dict(),
@@ -210,6 +238,7 @@ class DQNAgent(nn.Module):
                 "total_steps": self.total_steps,
                 "memory": [list(bucket) for bucket in self.memory],
             }, path)
+            print(f"Saved checkpoint to {path}:")
 
     def load_model(self):
         """
@@ -234,7 +263,10 @@ class DQNAgent(nn.Module):
             self.bucket_steps = checkpoint.get("bucket_steps", [0] * 5)
             self.losses = checkpoint.get("losses", [])
             self.total_steps = checkpoint.get("total_steps", 0)
-            self.memory = deque(checkpoint.get("memory", []), maxlen=self.memory_capacity)
+            self.memory = [
+                deque(bucket, maxlen=self.memory_capacity)
+                for bucket in checkpoint["memory"]
+            ]
 
             print(f"Loaded checkpoint:")
             print(f"  episode      : {self.last_episode}")
@@ -285,7 +317,6 @@ class DQNAgent(nn.Module):
                 f"({self.bucket_steps[bucket_index]:,} steps, "
                 f"Epsilon: {self.get_epsilon(bucket_index):.4f})\n"
             )
-
 
             for board_size in board_sizes:
                 results = []
@@ -367,8 +398,3 @@ class DQNAgent(nn.Module):
         return report
     
     
-    def __del__(self):
-        """
-        Ensures that the model is saved when the agent is deleted.
-        """
-        self.save_model()
