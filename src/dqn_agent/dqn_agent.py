@@ -56,13 +56,13 @@ class DQNAgent(nn.Module):
         )
 
         self.q_network = nn.Sequential(
-            nn.Linear(29, 512),
+            nn.Linear(29, 256),
             nn.ReLU(),
-            nn.Linear(512, 256),
+            
+            nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 4),
+
+            nn.Linear(128, 4),
         )
         
         self.target_network = copy.deepcopy(self.q_network)

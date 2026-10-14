@@ -4,11 +4,10 @@ import numpy as np
 from app_config.config import GLOBAL_CONFIG
 
 BOARD_BUCKETS = [
-    [5, 6, 7, 8, 9, 10, 12, 14, 15],
-    [16, 18, 20, 23, 25, 28, 30],
-    [32, 35, 40, 45, 50],
-    [55, 60, 65, 70, 75],
-    [80, 85, 90, 95, 100],
+    [5, 8, 12, 15],
+    [18, 20, 30],
+    [35, 40, 50],
+    [60, 70],
 ]
 
 def sample_board_size(progress: float, bucket_steps: list[int]) -> tuple[int, int]:

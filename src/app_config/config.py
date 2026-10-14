@@ -25,7 +25,7 @@ class Config:
 
         self.end_total_steps = 6_000_000
         self.episodes = 5_000
-        self.batch_size = 128
+        self.batch_size = 64
         
         self.evaluate_model = 50
         
