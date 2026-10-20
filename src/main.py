@@ -13,6 +13,7 @@ import pygame
 import sys
 import numpy as np
 
+
 def get_input(current_action: Action, APP_STATE: AppState) -> tuple[Action, AppState]:
     for event in pygame.event.get():
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -37,6 +38,11 @@ def get_input(current_action: Action, APP_STATE: AppState) -> tuple[Action, AppS
                 GLOBAL_CONFIG.update('fps_cap', fps)
 
     return current_action, APP_STATE
+
+def get_curriculum_progress(agent: DQNAgent) -> float:
+    completed_steps = sum(min(steps, agent.end_total_steps) for steps in agent.bucket_steps)
+
+    return completed_steps / (len(agent.bucket_steps) * agent.end_total_steps)
 
 def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, current_state: AppState):
     snake_vision = env.reset(GLOBAL_CONFIG.get("board_size"))
@@ -95,20 +101,32 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
 
     return AppState.LOBBY
 
-def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
-    episodes = GLOBAL_CONFIG.get("episodes")
-    episode = agent.last_episode
+def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQNAgent):
+    if min(agent.bucket_steps) >= agent.end_total_steps:
+        return AppState.LOBBY
 
-    bucket_index, board_size = sample_board_size(episode / episodes, agent.bucket_steps)
+    board_stats = sample_board_size(agent.bucket_steps, agent.balancing_steps)
+    if board_stats is None:
+        return AppState.LOBBY
+
+    bucket_index, board_size, balancing_phase = board_stats
     snake_vision = env.reset(board_size=board_size)
-
-    print_every = 100000
+    episode = agent.last_episode
+    
+    print_every = 10000
     printing = True
-    global_step = agent.total_steps
+
+    target_update_every = GLOBAL_CONFIG.get("target_update_every")
+    checkpoint_every = GLOBAL_CONFIG.get("checkpoint_every")
+    train_every = GLOBAL_CONFIG.get("train_every")
+    batch_size = GLOBAL_CONFIG.get("batch_size")
 
     debug = ""
-    while episode < episodes:
-        global_step += 1
+
+    save_now = False
+
+    while True:
+        agent.env_steps += 1
 
         action = Action(
             agent.get_action(
@@ -119,7 +137,6 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
         )
 
         next_state, reward, is_dead = env.step(action)
-
         agent.remember(
             bucket_index,
             snake_vision,
@@ -129,34 +146,28 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
             is_dead,
         )
 
-        agent.train_step(
-            GLOBAL_CONFIG.get("batch_size"),
-            bucket_index,
-        )
+        if agent.env_steps % train_every == 0:
+            loss = agent.train_step(batch_size, bucket_index, balancing_phase)
 
-        if global_step % GLOBAL_CONFIG.get("save_interval") == 0:
-            agent.update_target_network()
-            
-        if global_step % 200_000 == 0:
-            agent.save_model("models/base_checkpoint_" + str(global_step) + ".pth")
+            if loss is not None:
+                if agent.total_steps % target_update_every == 0:
+                    agent.update_target_network()
 
-        if global_step % print_every == 0 and printing:
+        if agent.env_steps % checkpoint_every == 0:
+            save_now = True
+
+        if agent.env_steps % print_every == 0 and printing:
             debug += (
                 f"episode {episode}: "
-                f"All Steps: {global_step} ({agent.total_steps/GLOBAL_CONFIG.get("end_total_steps"):.4f}), "
-                f"Memory Size: {len(agent.memory[bucket_index])}, "
-                f"Board Size: {board_size}x{board_size}, "
-                f"Epsilon: {agent.get_epsilon(bucket_index):.4f}, "
+                f"All Steps: {agent.env_steps} ({get_curriculum_progress(agent):.4f}), "
+                f"Bucket Steps: ({', '.join(str(steps) for steps in agent.bucket_steps)}), "
+                f"Balancing Steps: {agent.balancing_steps}, "
+                f"Memory Size: ({', '.join(str(len(bucket)) for bucket in agent.memory)}), "
                 f"Loss: "
-                f"{agent.losses[-1] if agent.losses else None}\n\n"
+                f"{agent.losses[-1]:.6f}\n\n" if agent.losses else "None\n\n"
             )
 
-            debug += agent.evaluate(
-                env,
-                games_per_board=10,
-            )
-            
-
+            debug += agent.evaluate(eval_env, games_per_board=10)
             print(debug)
             debug = ""
 
@@ -167,16 +178,25 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
         episode += 1
         agent.last_episode = episode
 
-        progress = agent.total_steps / GLOBAL_CONFIG.get("end_total_steps")
-        bucket_index, board_size = sample_board_size(progress, agent.bucket_steps)
+        if save_now:
+            agent.save_model(f"models/checkpoint_{agent.env_steps}.pth")
+            save_now = False
+        if min(agent.bucket_steps) >= agent.end_total_steps:
+            break
 
+        board_stats = sample_board_size(agent.bucket_steps, agent.balancing_steps)
+        if board_stats is None:
+            break
+        bucket_index, board_size, balancing_phase = board_stats
         snake_vision = env.reset(board_size=board_size)
 
     if printing:
         debug += (
             f"episode {episode}: "
-            f"All Steps: {global_step}, "
-            f"Memory Size: {len(agent.memory)}, "
+            f"All Steps: {agent.env_steps}, "
+            f"Bucket Steps: {', '.join(str(steps) for steps in agent.bucket_steps)}, "
+            f"Balancing Steps: {agent.balancing_steps}, "
+            f"Memory Size: {', '.join(str(len(bucket)) for bucket in agent.memory)}, "
             f"Board Size: {board_size}x{board_size}, "
             f"Epsilon: {agent.get_epsilon(bucket_index):.4f}, "
             f"Loss: "
@@ -184,29 +204,29 @@ def train_game_loop(env: GymnasiumWrapper, agent: DQNAgent):
         )
 
         debug += agent.evaluate(
-            env,
+            eval_env,
             games_per_board=20,
         )
 
         print(debug)
         debug = ""
         if agent.losses:
-            diffs = np.diff(agent.losses)
+            recent_losses = agent.losses[-1000:]
             print(
-                f"Training completed after {episodes} episodes. "
-                f"Loss diff mean: {diffs.mean():.6f}, "
-                f"std: {diffs.std():.6f}"
+                f"Training completed after {episode} episodes. "
+                f"Recent Loss Mean: {np.mean(recent_losses):.6f}, "
+                f"Recent Loss Std: {np.std(recent_losses):.6f}"
             )
         else:
-            print(f"Training completed after {episodes} episodes.")
+            print(f"Training completed after {episode} episodes.")
 
+    agent.save_model("models/final_checkpoint.pth")
     return AppState.LOBBY
 
 def main(argv):
     try:
         if parseArguments(argv) is False:
             return
-        # print(f"Configuration loaded: {GLOBAL_CONFIG.to_dict()}")
     except ValueError as e:
         print(f"Error: {e}")
         return
@@ -218,15 +238,16 @@ def main(argv):
         if current_state not in [AppState.TRAIN, AppState.EVALUATE]:
             gfx = GraphicsEngine(window_size)
         env = GymnasiumWrapper()
+        eval_env = GymnasiumWrapper()
         agent = DQNAgent()
 
         while current_state != AppState.EXIT:
             if current_state == AppState.TRAIN:
-                current_state = train_game_loop(env, agent)
+                current_state = train_game_loop(env, eval_env, agent)
                 if gfx is None:
                     gfx = GraphicsEngine(window_size)
             elif current_state == AppState.EVALUATE:
-                print(agent.evaluate(env, games_per_board=GLOBAL_CONFIG.get("evaluate_model")))
+                print(agent.evaluate(eval_env, games_per_board=GLOBAL_CONFIG.get("evaluate_model")))
                 break
             elif gfx is not None:
                 if current_state == AppState.LOBBY:

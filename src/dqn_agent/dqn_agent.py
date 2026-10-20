@@ -1,107 +1,80 @@
 import os
 
+from gymnasium_wrapper.gymnasium_wrapper import GymnasiumWrapper
+from utilize.get_bucket_index import BOARD_BUCKETS
+from .memory import ReplayBuffer, Transition
 from app_config.config import GLOBAL_CONFIG
-from constants import Action, AppState
+from torch.backends import cudnn
 from collections import deque
-from .memory import Transition
+from constants import Action
 
+import torch.optim as optim
+import torch.cuda as cuda
+import torch.nn as nn
+import numpy as np
 import random
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
 import copy
-
-from gymnasium_wrapper.gymnasium_wrapper import GymnasiumWrapper
 
 
 class DQNAgent(nn.Module):
     def __init__(self):
         """
-        Initializes hyperparameters from GLOBAL_CONFIG, sets up the Replay Memory,
-        and instantiates the Q-Network used to approximate the Q function.
-
-        :param learning_enabled: When False, the agent behaves in pure
-            exploitation / evaluation mode: it will not explore randomly,
-            will not store transitions in replay memory, and train_step()
-            becomes a no-op. This lets you evaluate a model's success rate
-            without altering its learning state (subject requirement:
-            "Exploitation without learning").
         """
         super(DQNAgent, self).__init__()
         
-        self.learning_rate  = GLOBAL_CONFIG.get("learning_rate")
-        self.gamma          = GLOBAL_CONFIG.get("gamma")
-        self.target_steps   = GLOBAL_CONFIG.get("target_steps")
-        self.target_weights = GLOBAL_CONFIG.get("target_weights")
-        self.new_weights    = GLOBAL_CONFIG.get("new_weights")
+        self.learning_rate      = GLOBAL_CONFIG.get("learning_rate")
+        self.gamma              = GLOBAL_CONFIG.get("gamma")
+        self.end_total_steps    = GLOBAL_CONFIG.get("end_total_steps")
+        self.target_weights     = GLOBAL_CONFIG.get("target_weights")
+        self.new_weights        = GLOBAL_CONFIG.get("new_weights")
 
-        self.memory_capacity = 200_000
-        self.memory         = [deque(maxlen=self.memory_capacity) for _ in range(5)]
-        self.total_steps     = 0
-        self.min_epsilon    = 0.01
-        self.initial_epsilon = 1.0
+        self.memory_capacity    = 200_000
+        self.memory             = [ReplayBuffer(self.memory_capacity) for _ in range(5)]
+        self.min_epsilon        = 0.01
+        self.initial_epsilon    = 1.0
         
-        self.epsilon_decay = (
-            self.min_epsilon / self.initial_epsilon
-        ) ** (1 / self.target_steps)
-        
-        self.bucket_steps = [0] * 5
+        self.total_steps        = 0
+        self.env_steps          = 0
 
-        self.last_episode    = 0
-        self.losses         = []
-        torch.backends.cudnn.benchmark = True
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        self.last_episode       = 0
+        self.losses             = []
+        self.balancing_steps    = 0
+        self.bucket_steps       = [0] * 5
+        cudnn.benchmark         = True
+        self.device             = torch.device("cuda" if cuda.is_available() else "cpu")
 
         self.q_network = nn.Sequential(
-            nn.Linear(29, 256),
+            nn.Linear(29, 32),
             nn.ReLU(),
             
-            nn.Linear(256, 128),
+            nn.Linear(32, 32),
             nn.ReLU(),
 
-            nn.Linear(128, 4),
-        )
+            nn.Linear(32, 4),
+        ).to(self.device)
         
         self.target_network = copy.deepcopy(self.q_network)
         self.target_network.eval()
-
         self.criterion = nn.SmoothL1Loss()
-        self.optimizer = optim.Adam(
-            self.parameters(),
-            lr=self.learning_rate
-        )
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learning_rate)
 
-        self.to(self.device)
         self.load_model()
     
     def forward(self, x):
         """
-        Defines the forward pass of the network.
-        :param x: Input tensor (state representation).
-        :return: Output tensor (Q-values for each action).
         """
         return self.q_network(x.to(self.device))
 
+
     def get_epsilon(self, bucket_index: int) -> float:
-        return max(
-            self.min_epsilon,
-            self.initial_epsilon *
-            (self.epsilon_decay ** self.bucket_steps[bucket_index])
-        )
+        initial = max(0.6, self.initial_epsilon - bucket_index * 0.1)
+        decay = (self.min_epsilon / initial) ** (1 / self.end_total_steps)
+
+        return max(self.min_epsilon, initial * (decay ** self.bucket_steps[bucket_index]))
 
     def get_action(self, snake_vision, explore_mode=False, bucket_index: int = 0) -> Action:
         """
-        Chooses an action based on the epsilon-greedy policy:
-        - With probability epsilon, choose a random action (exploration).
-        - With probability (1 - epsilon), choose the action that maximizes the Q-value (exploitation).
-
-        :param snake_vision: A 16-value float32 NumPy array representing the snake's vision.
-        :param explore_mode: If True, allows for exploration (random actions).
-        :return: The action index to be taken (0-3, corresponding to
-            Action.UP / Action.DOWN / Action.LEFT / Action.RIGHT).
         """
 
         if explore_mode and random.random() < self.get_epsilon(bucket_index):
@@ -116,54 +89,52 @@ class DQNAgent(nn.Module):
 
     def remember(self, bucket_index: int, snake_vision: np.ndarray, action: Action, next_snake_vision: np.ndarray, reward: float, done: bool):
         """
-        Appends the (state, action, reward, next_state, done) tuple to the replay memory deque.
-        No-op when learning is disabled, so evaluation runs never mutate
-        the agent's learning state.
         """
         self.memory[bucket_index].append(
             Transition(
-                state=snake_vision,
+                state=snake_vision.copy(),
                 action=action,
-                next_state=next_snake_vision,
+                next_state=next_snake_vision.copy(),
                 reward=reward,
                 done=done,
             )
         )
 
-    def train_step(self, batch_size: int, bucket_index: int = 0):
+    def train_step(self, batch_size: int, bucket_index: int = 0, balancing_phase: bool = False) -> float | None:
         """
-        Trains the neural network by sampling a batch of past experiences
-        and applying the Q-learning update rule.
-        No-op when learning is disabled (evaluation / exploitation-only mode).
         """
+
         if len(self.memory[bucket_index]) < batch_size:
-            return
+            return None
 
-        bucket_progress = self.bucket_steps[bucket_index] / self.target_steps
-        old_fraction = max(
-            0.20,
-            0.30 * (1 - bucket_progress)
-        )
-        current_fraction = 1 - old_fraction
+        if bucket_index == 0:
+            batch = random.sample(self.memory[0], batch_size)
+        else:
+            bucket_progress = self.bucket_steps[bucket_index] / self.end_total_steps
 
-        current_size = int(batch_size * current_fraction)
-        batch = random.sample(self.memory[bucket_index], current_size)
-        remaining = batch_size - current_size
+            old_fraction = max(0.20, 0.30 * (1 - bucket_progress))
+            old_size = round(batch_size * old_fraction)
 
-        if bucket_index > 0:
             previous = list(range(bucket_index))
-            weights = np.arange(1, bucket_index + 1, dtype=float)
-            weights /= weights.sum()
-            counts = np.random.multinomial(remaining, weights)
+            available = [i for i in previous if len(self.memory[i]) > 0]
+            old_batch = []
 
-            for bucket, count in zip(previous, counts):
-                if count:
-                    batch.extend(
+            if available:
+                weights = np.array([i + 1 for i in available], dtype=float)
+                weights /= weights.sum()
+
+                counts = np.random.multinomial(old_size, weights)
+                for bucket, count in zip(available, counts):
+                    old_batch.extend(
                         random.sample(
                             self.memory[bucket],
                             min(count, len(self.memory[bucket]))
                         )
                     )
+
+            current_size = batch_size - len(old_batch)
+            batch = random.sample(self.memory[bucket_index], current_size)
+            batch.extend(old_batch)
 
         random.shuffle(batch)
         states = torch.tensor(
@@ -201,9 +172,13 @@ class DQNAgent(nn.Module):
 
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=5.0)
+        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=5.0)
         self.optimizer.step()
-        self.bucket_steps[bucket_index] += 1
+
+        if balancing_phase:
+            self.balancing_steps += 1
+        else:
+            self.bucket_steps[bucket_index] += 1
         self.total_steps += 1
 
         self.losses.append(loss.item())
@@ -211,40 +186,33 @@ class DQNAgent(nn.Module):
 
     def update_target_network(self):
         """
-        Updates the target network's weights to match the current Q-network.
-        This is typically done periodically to stabilize training.
         """
         self.target_network.load_state_dict(self.q_network.state_dict())
 
     def save_model(self, user_blocked_path: str = ""):
         """
-        Serializes and saves everything describing the agent's current
-        learning state to disk: network weights, optimizer state, and
-        epsilon. This is what makes a saved file a true "model" that a
-        new training session can resume from exactly where the last one
-        left off, per the subject's export/import requirement.
         """
-        path = self.new_weights if user_blocked_path == "" else user_blocked_path
-        if path is not None:
-            if os.path.exists(os.path.dirname(path)):
-                path = f"models/fallback_checkpoint_{self.total_steps}.pth"
-            torch.save({
-                "q_network": self.q_network.state_dict(),
-                "target_network": self.target_network.state_dict(),
-                "optimizer_state_dict": self.optimizer.state_dict(),
-                "last_episode": self.last_episode,
-                "bucket_steps": self.bucket_steps,
-                "losses": self.losses,
-                "total_steps": self.total_steps,
-                "memory": [list(bucket) for bucket in self.memory],
-            }, path)
-            print(f"Saved checkpoint to {path}:")
+        path = user_blocked_path or self.new_weights
+        if not path:
+            return
+
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+
+        torch.save({
+            "q_network": self.q_network.state_dict(),
+            "target_network": self.target_network.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "last_episode": self.last_episode,
+            "bucket_steps": self.bucket_steps,
+            "losses": self.losses,
+            "total_steps": self.total_steps,
+            "env_steps": self.env_steps,
+            "memory": [list(bucket) for bucket in self.memory],
+        }, path)
+        print(f"Saved checkpoint to {path}:")
 
     def load_model(self):
         """
-        Loads a previously saved learning state (network weights, optimizer
-        state, and epsilon) from disk, restoring the agent to exactly the
-        point it was saved at so training or evaluation can continue.
         """
         path = self.target_weights
         
@@ -264,9 +232,17 @@ class DQNAgent(nn.Module):
             self.losses = checkpoint.get("losses", [])
             self.total_steps = checkpoint.get("total_steps", 0)
             self.memory = [
-                deque(bucket, maxlen=self.memory_capacity)
-                for bucket in checkpoint["memory"]
+                ReplayBuffer(self.memory_capacity)
+                for _ in range(5)
             ]
+
+            saved_memory = checkpoint["memory"]
+            if len(saved_memory) != len(self.memory):
+                raise ValueError("Checkpoint bucket count mismatch")
+
+            for buffer, transitions in zip(self.memory, saved_memory):
+                for transition in transitions:
+                    buffer.append(transition)
 
             print(f"Loaded checkpoint:")
             print(f"  episode      : {self.last_episode}")
@@ -275,28 +251,23 @@ class DQNAgent(nn.Module):
             print(f"  memory size  : {[len(self.memory[i]) for i in range(5)]}")
             print(f"  losses       : {len(self.losses)} entries")
 
-    def evaluate(
-        self,
-        env: GymnasiumWrapper,
-        games_per_board: int = 20,
-    ) -> str:
+    def evaluate(self, env: GymnasiumWrapper, games_per_board: int = 20) -> str:
         """
-        Runs deterministic evaluation (epsilon = 0) on every sufficiently trained
-        curriculum bucket and returns a formatted report.
         """
 
-        BUCKETS = [
-            [7, 10, 12, 14, 15],
-            [16, 18, 20, 24, 30],
-            [32, 35, 40, 45, 50],
-            [55, 60, 65, 70, 75],
-            [80, 85, 90, 95, 100],
-        ]
+        # BUCKETS = [
+        #     [7, 10, 12, 14, 15],
+        #     [16, 18, 20, 24, 30],
+        #     [32, 35, 40, 45, 50],
+        #     [55, 60, 65, 70, 75],
+        #     [80, 85, 90, 95, 100],
+        # ]
 
-        MIN_BUCKET_STEPS = self.target_steps * 0.2
+        BUCKETS = BOARD_BUCKETS
+
+        MIN_BUCKET_STEPS = self.end_total_steps * 0.2
 
         report = ""
-
         buckets_scores = []
         buckets_greens = []
         buckets_reds = []

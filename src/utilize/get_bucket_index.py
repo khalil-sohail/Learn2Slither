@@ -4,50 +4,56 @@ import numpy as np
 from app_config.config import GLOBAL_CONFIG
 
 BOARD_BUCKETS = [
-    [5, 8, 12, 15],
-    [18, 20, 30],
-    [35, 40, 50],
-    [60, 70],
+    # [5, 10, 15, 20], [25, 30, 35, 40], [45, 50, 55, 60], [65, 70, 75, 80], [85, 90, 95, 100]
+    [5, 10], [15, 20], [25, 30], [35, 40], [45, 50]
 ]
 
-def sample_board_size(progress: float, bucket_steps: list[int]) -> tuple[int, int]:
+PHASE_WEIGHTS = [
+    [1.00, 0.00, 0.00, 0.00, 0.00],
+    [0.30, 0.70, 0.00, 0.00, 0.00],
+    [0.15, 0.15, 0.70, 0.00, 0.00],
+    [0.10, 0.10, 0.10, 0.70, 0.00],
+    [0.07, 0.07, 0.07, 0.07, 0.72]
+]
 
-    if progress < 0.20:
-        unlocked = [0]
-        target = np.array([1.0])
-    elif progress < 0.40:
-        unlocked = [0, 1]
-        target = np.array([0.55, 0.45])
-    elif progress < 0.60:
-        unlocked = [0, 1, 2]
-        target = np.array([0.40, 0.35, 0.25])
-    elif progress < 0.80:
-        unlocked = [0, 1, 2, 3]
-        target = np.array([0.30, 0.27, 0.23, 0.20])
+def sample_board_size(bucket_steps: list[int], balancing_steps: int) -> tuple[int, int, bool] | None:
+    minimum = GLOBAL_CONFIG.get("end_total_steps")
+    balance_interval = max(1, minimum // 4)
+    count = len(BOARD_BUCKETS)
+
+    assert len(bucket_steps) == count
+    assert len(PHASE_WEIGHTS) == count
+
+    for i in range(count):
+        if bucket_steps[i] < minimum:
+            weights = PHASE_WEIGHTS[i]
+            balance_until = None
+            break
+
+        if i == 0:
+            continue
+
+        balance_until = (
+            (i - 1) * balance_interval
+            + (minimum if i == count - 1 else balance_interval)
+        )
+
+        if balancing_steps < balance_until:
+            weights = [
+                1.0 if j <= i else 0.0
+                for j in range(count)
+            ]
+            break
+
     else:
-        unlocked = [0, 1, 2, 3, 4]
-        target = np.array([0.20] * 5)
+        return None
 
-    unlocked_steps = np.array([bucket_steps[i] for i in unlocked])
+    bucket = random.choices(
+        range(count),
+        weights=weights,
+        k=1,
+    )[0]
 
-    desired_steps = (
-        GLOBAL_CONFIG.get("end_total_steps")
-        * progress
-        * target
-    )
-
-    deficit = np.maximum(desired_steps - unlocked_steps, 0)
-
-    if deficit.sum() == 0:
-        deficit_weights = np.ones(len(unlocked)) / len(unlocked)
-    else:
-        deficit_weights = deficit / deficit.sum()
-
-    uniform_weights = np.ones(len(unlocked)) / len(unlocked)
-    alpha = 0.80
-    weights = alpha * deficit_weights + (1 - alpha) * uniform_weights
-
-    bucket = random.choices(unlocked, weights=weights.tolist(), k=1)[0]
     board = random.choice(BOARD_BUCKETS[bucket])
+    return bucket, board, (balance_until is not None)
 
-    return bucket, board

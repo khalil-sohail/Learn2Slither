@@ -21,17 +21,19 @@ class Config:
         self.gamma = 0.99
         self.target_weights = None
         self.new_weights = None
-        self.target_steps = 1_000_000
 
-        self.end_total_steps = 6_000_000
-        self.episodes = 5_000
+        # training parameters
+        self.end_total_steps = 2_000 # 1_000_000
         self.batch_size = 64
+        self.train_every = 10
+        self.target_update_every = 1_000
+        self.checkpoint_every = 200_000
         
         self.evaluate_model = 50
         
         # Application & File I/O State
         self.mode = "LOBBY"
-        self.save_interval = 2000
+        self.save_interval = 200_000
 
         # general configuration
         self.print_vision = False
@@ -49,10 +51,11 @@ class Config:
             "gamma": float,
             "target_weights": type(None),
             "new_weights": type(None),
-            "target_steps": int,
             "end_total_steps": int,
-            "episodes": int,
             "batch_size": int,
+            "train_every": int,
+            "target_update_every": int,
+            "checkpoint_every": int,
             "evaluate_model": int,
             "mode": str,
             "save_interval": int,
@@ -101,21 +104,25 @@ class Config:
             "new_weights": {
                 "allowed": [str, None, "optional"]
             },
-            "target_steps": {
-                "min": 1000,
-                "max": 1000_0000
-            },
             "end_total_steps": {
                 "min": 0,
                 "max": 10_000_000
             },
-            "episodes": {
-                "min": 1,
-                "max": 100000
-            },
             "batch_size": {
                 "min": 1,
                 "max": 10000
+            },
+            "train_every": {
+                "min": 1,
+                "max": 10000
+            },
+            "target_update_every": {
+                "min": 1,
+                "max": 10000
+            },
+            "checkpoint_every": {
+                "min": 1,
+                "max": 1_000_000
             },
             "evaluate_model": {
                 "min": 1,

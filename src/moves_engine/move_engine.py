@@ -75,13 +75,3 @@ class MovesEngine:
             return True
         return False
 
-    # def check_apple_collision(self, apple_indexs: deque, next_index: int):
-    #     """
-    #     Checks if the next_index collides with an apple.
-    #     :param apple_indexs: A deque of indices of apples on the board.
-    #     :param next_index: The index to check for collision.
-    #     :return: True if the apple is eaten, False otherwise.
-    #     """
-    #     if apple_indexs is not None and next_index in apple_indexs:
-    #         return True
-    #     return False

@@ -59,14 +59,6 @@ def parseArguments(argv) -> bool:
         ),
         
         # Neural Network Flags
-        "-e": (
-            ("episodes", int),
-            "Expected Episodes (training games): integer"
-        ),
-        "--batch-size": (
-            ("batch_size", int),
-            "Expected Batch Size: integer"
-        ),
         "--lr": (
             ("learning_rate", float),
             "Expected Learning Rate: float"
@@ -77,13 +69,25 @@ def parseArguments(argv) -> bool:
         ),
         "--total-steps": (
             ("end_total_steps", int),
-            "Expected Total Steps at the end of training: integer"
+            "Expected Total optimizer updates for each pocket at the end of training: integer"
         ),
-        "--target-steps": (
-            ("target_steps", int),
-            "Expected Target Steps: integer"
+        "--batch-size": (
+            ("batch_size", int),
+            "Expected Batch Size: integer"
         ),
-        
+        "--train-every": (
+            ("train_every", int),
+            "Expected Training Frequency: integer"
+        ),
+        "--target-update-every": (
+            ("target_update_every", int),
+            "Expected Target Network Update Frequency: integer"
+        ),
+        "--checkpoint-every": (
+            ("checkpoint_every", int),
+            "Expected Checkpoint Save Frequency: integer"
+        ),
+
         # Reward Flags
         "--reward-apple": (
             ("reward_apple", float),
@@ -147,8 +151,10 @@ def parseArguments(argv) -> bool:
             print("  --gamma           Discount factor (default: 0.99)")
             print("  --total-steps     Total steps for training (default: 3,000,000)")
             print("  --target-steps    Steps between target network updates (default: 500,000)")
-            print("  --episodes        Number of training episodes (default: 5,000)")
             print("  --batch-size      Batch size for training (default: 128)")
+            print("  --train-every     Steps between training updates (default: 5)")
+            print("  --target-update-every Steps between target network updates (default: 1,000)")
+            print("  --checkpoint-every Steps between saving model checkpoints (default: 200,000)")
             print("Rewards:")
             print("  --reward-red-apple    Float reward for eating red apple (default: -1.0)")
             print("  --reward-green-apple    Float reward for eating green apple (default: 1.0)")
