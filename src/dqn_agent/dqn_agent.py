@@ -32,7 +32,7 @@ class DQNAgent(nn.Module):
         self.memory_capacity    = 200_000
         self.memory             = [ReplayBuffer(self.memory_capacity) for _ in range(5)]
         self.min_epsilon        = 0.01
-        self.initial_epsilon    = 1.0
+        self.initial_epsilon    = 0.75 # 1.0
         
         self.total_steps        = 0
         self.env_steps          = 0
@@ -45,13 +45,13 @@ class DQNAgent(nn.Module):
         self.device             = torch.device("cuda" if cuda.is_available() else "cpu")
 
         self.q_network = nn.Sequential(
-            nn.Linear(29, 32),
+            nn.Linear(33, 64),
             nn.ReLU(),
             
-            nn.Linear(32, 32),
+            nn.Linear(64, 64),
             nn.ReLU(),
 
-            nn.Linear(32, 4),
+            nn.Linear(64, 4),
         ).to(self.device)
         
         self.target_network = copy.deepcopy(self.q_network)
@@ -65,7 +65,6 @@ class DQNAgent(nn.Module):
         """
         """
         return self.q_network(x.to(self.device))
-
 
     def get_epsilon(self, bucket_index: int) -> float:
         initial = max(0.6, self.initial_epsilon - bucket_index * 0.1)
@@ -225,12 +224,12 @@ class DQNAgent(nn.Module):
 
             self.q_network.load_state_dict(checkpoint["q_network"])
             self.target_network.load_state_dict(checkpoint["target_network"])
-            self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
+            self.optimizer.load_state_dict(checkpoint["optimizer"])
             self.last_episode = checkpoint.get("last_episode", 0)
             self.bucket_steps = checkpoint.get("bucket_steps", [0] * 5)
             self.losses = checkpoint.get("losses", [])
             self.total_steps = checkpoint.get("total_steps", 0)
+            self.env_steps = checkpoint.get("env_steps", 0)
             self.memory = [
                 ReplayBuffer(self.memory_capacity)
                 for _ in range(5)

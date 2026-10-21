@@ -17,13 +17,13 @@ class Config:
         self.reward_timeout = -10.0
         
         # DQN Hyperparameters
-        self.learning_rate = 0.001
-        self.gamma = 0.99
+        self.gamma = 0.995
         self.target_weights = None
         self.new_weights = None
 
         # training parameters
-        self.end_total_steps = 2_000 # 1_000_000
+        self.learning_rate = 0.0001
+        self.end_total_steps = 2_500 # 1_000_000
         self.batch_size = 64
         self.train_every = 10
         self.target_update_every = 1_000

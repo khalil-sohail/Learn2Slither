@@ -113,7 +113,7 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
     snake_vision = env.reset(board_size=board_size)
     episode = agent.last_episode
     
-    print_every = 10000
+    print_every = 100_000
     printing = True
 
     target_update_every = GLOBAL_CONFIG.get("target_update_every")
@@ -122,9 +122,7 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
     batch_size = GLOBAL_CONFIG.get("batch_size")
 
     debug = ""
-
     save_now = False
-
     while True:
         agent.env_steps += 1
 
@@ -181,8 +179,6 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
         if save_now:
             agent.save_model(f"models/checkpoint_{agent.env_steps}.pth")
             save_now = False
-        if min(agent.bucket_steps) >= agent.end_total_steps:
-            break
 
         board_stats = sample_board_size(agent.bucket_steps, agent.balancing_steps)
         if board_stats is None:

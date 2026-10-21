@@ -83,7 +83,7 @@ class GymnasiumWrapper(gym.Env):
         return self.board.get_snake_vision_vector(), reward, done or is_dead
 
     def _calculate_reward(self, is_dead, ate_red_apple, ate_green_apple):
-        reward = 0.0
+        reward = self.step_reward
 
         if ate_green_apple:
             self.steps_since_last_green_apple = 0
@@ -93,20 +93,17 @@ class GymnasiumWrapper(gym.Env):
 
         if ate_red_apple:
             reward += self.red_apple_reward
-
         if is_dead:
             reward += self.death_reward
             return reward, True
 
-        timeout_limit = max(100, self.board_size * 20)
+        timeout_limit = max(100, self.board_size * 2)
 
         if self.steps_since_last_green_apple >= timeout_limit:
             reward += self.reward_timeout
             return reward, True
 
-        hunger_ratio = self.steps_since_last_green_apple / timeout_limit
-
-        reward += self.step_reward
-        reward -= 0.1 * hunger_ratio * hunger_ratio
-
         return reward, False
+
+
+    
