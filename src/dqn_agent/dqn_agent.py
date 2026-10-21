@@ -1,3 +1,4 @@
+import math
 import os
 
 from gymnasium_wrapper.gymnasium_wrapper import GymnasiumWrapper
@@ -29,10 +30,12 @@ class DQNAgent(nn.Module):
         self.target_weights     = GLOBAL_CONFIG.get("target_weights")
         self.new_weights        = GLOBAL_CONFIG.get("new_weights")
 
-        self.memory_capacity    = 200_000
+        self.memory_capacity    = 400_000
         self.memory             = [ReplayBuffer(self.memory_capacity) for _ in range(5)]
         self.min_epsilon        = 0.01
-        self.initial_epsilon    = 0.75 # 1.0
+
+        self.initial_epsilon     = [1.0, 0.95, 0.90, 0.85, 0.80]
+        self.epsilon_decay_power = [0.70, 1.30, 1.70, 2.30, 3.00]
         
         self.total_steps        = 0
         self.env_steps          = 0
@@ -45,13 +48,13 @@ class DQNAgent(nn.Module):
         self.device             = torch.device("cuda" if cuda.is_available() else "cpu")
 
         self.q_network = nn.Sequential(
-            nn.Linear(33, 64),
+            nn.Linear(33, 256),
             nn.ReLU(),
             
-            nn.Linear(64, 64),
+            nn.Linear(256, 128),
             nn.ReLU(),
 
-            nn.Linear(64, 4),
+            nn.Linear(128, 4),
         ).to(self.device)
         
         self.target_network = copy.deepcopy(self.q_network)
@@ -62,19 +65,26 @@ class DQNAgent(nn.Module):
         self.load_model()
     
     def forward(self, x):
-        """
-        """
+        """"""
         return self.q_network(x.to(self.device))
 
-    def get_epsilon(self, bucket_index: int) -> float:
-        initial = max(0.6, self.initial_epsilon - bucket_index * 0.1)
-        decay = (self.min_epsilon / initial) ** (1 / self.end_total_steps)
 
-        return max(self.min_epsilon, initial * (decay ** self.bucket_steps[bucket_index]))
+    def get_epsilon(self, bucket_index: int) -> float:
+        """
+        equation:
+        epsilon = min_epsilon + (initial_epsilon - min_epsilon) * (1 - progress) ** decay_power
+        where:
+            progress = bucket_steps / end_total_steps
+        """
+        initial = self.initial_epsilon[bucket_index]
+        power = self.epsilon_decay_power[bucket_index]
+
+        progress = min(1.0, self.bucket_steps[bucket_index] / self.end_total_steps,)
+        return self.min_epsilon + (initial - self.min_epsilon) * (1.0 - progress) ** power
+
 
     def get_action(self, snake_vision, explore_mode=False, bucket_index: int = 0) -> Action:
-        """
-        """
+        """"""
 
         if explore_mode and random.random() < self.get_epsilon(bucket_index):
             return Action(random.randint(0, 3))

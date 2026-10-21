@@ -113,8 +113,8 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
     snake_vision = env.reset(board_size=board_size)
     episode = agent.last_episode
     
-    print_every = 100_000
-    printing = True
+    print_every = 10_000
+    printing = False
 
     target_update_every = GLOBAL_CONFIG.get("target_update_every")
     checkpoint_every = GLOBAL_CONFIG.get("checkpoint_every")
@@ -177,7 +177,7 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
         agent.last_episode = episode
 
         if save_now:
-            agent.save_model(f"models/checkpoint_{agent.env_steps}.pth")
+            agent.save_model(f"models/checkpoint_{agent.last_episode}.pth")
             save_now = False
 
         board_stats = sample_board_size(agent.bucket_steps, agent.balancing_steps)
@@ -216,7 +216,7 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
         else:
             print(f"Training completed after {episode} episodes.")
 
-    agent.save_model("models/final_checkpoint.pth")
+    agent.save_model(f"models/final_checkpoint_{agent.last_episode}.pth")
     return AppState.LOBBY
 
 def main(argv):

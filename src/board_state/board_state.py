@@ -4,14 +4,14 @@ from constants import Entity
 
 import numpy as np
 
-_VISION_DIRECTIONS = (
+VISION_DIRECTIONS = (
     (-1, 0),
     (0, 1),
     (1, 0),
     (0, -1),
 )
 
-_VISION_BODY_ENTITIES = frozenset({
+VISION_BODY_ENTITIES = frozenset({
     Entity.SNAKE_BODY,
     Entity.SNAKE_TAIL_UP,
     Entity.SNAKE_TAIL_DOWN,
@@ -159,11 +159,14 @@ class BoardState:
             
         return Entity.SNAKE_HEAD_LEFT
 
+
+    
+
     def vision_symbol(self, cell) -> str:
         """Convert a board entity into its visible symbol."""
         if cell == Entity.WALL:
             return "W"
-        if cell in _VISION_BODY_ENTITIES:
+        if cell in VISION_BODY_ENTITIES:
             return "S"
         if cell == Entity.GREEN_APPLE:
             return "G"
@@ -204,10 +207,8 @@ class BoardState:
         )
 
         return [
-            self.scan_vision_ray(
-                head_row, head_col, dr, dc
-            )
-            for dr, dc in _VISION_DIRECTIONS
+            self.scan_vision_ray(head_row, head_col, dr, dc)
+            for dr, dc in VISION_DIRECTIONS
         ]
 
     def normalize_vision_distance(self, distance: int, dimension: int) -> float:
@@ -248,23 +249,22 @@ class BoardState:
             for distance in distances
         ]
 
-    def get_ray_corridor_length(self, ray: list[str]) -> float:
+    def get_ray_corridor_length(self, ray: list[str], dimension: int) -> float:
         """
-        Return the proportion of consecutive traversable cells
-        before the first wall or body segment.
+        Normalized number of consecutive traversable cells
+        before encountering a wall or body.
 
-        Apples and empty cells are considered traversable.
-        Returns 0.0 when the first cell is blocked.
+        0.0 means the next cell is blocked.
         """
         free_cells = 0
 
         for symbol in ray:
             if symbol in ("W", "S"):
                 break
-
             free_cells += 1
 
-        return free_cells / max(1, len(ray) - 1)
+        return free_cells / max(1, dimension - 3)
+
 
     def get_clear_green_proximity(self, ray: list[str], dimension: int) -> float:
         """
@@ -354,7 +354,7 @@ class BoardState:
         features = []
         for ray, body_density in zip(rays, body_densities):
             features.extend(self.get_ray_distance_features(ray, size))
-            features.append(self.get_ray_corridor_length(ray))
+            features.append(self.get_ray_corridor_length(ray, size))
             features.append(self.get_clear_green_proximity(ray, size))
             features.append(body_density)
 

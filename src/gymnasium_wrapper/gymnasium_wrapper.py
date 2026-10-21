@@ -97,7 +97,7 @@ class GymnasiumWrapper(gym.Env):
             reward += self.death_reward
             return reward, True
 
-        timeout_limit = max(100, self.board_size * 2)
+        timeout_limit = max(80, self.board_size * 2.5)
 
         if self.steps_since_last_green_apple >= timeout_limit:
             reward += self.reward_timeout
