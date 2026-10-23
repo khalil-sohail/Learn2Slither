@@ -1,28 +1,24 @@
 
-from app_config.config import GLOBAL_CONFIG
+from app_config import GLOBAL_CONFIG
 from moves_engine import MovesEngine
 from board_state import BoardState
 from constants import Action, Entity
-
 from gymnasium import spaces
-import gymnasium as gym
+
 import numpy as np
 
 
-class GymnasiumWrapper(gym.Env):
+class GymnasiumWrapper:
     """Snake environment with training-only stagnation detection."""
 
     def __init__(self):
-        super().__init__()
-
         self.action_space = spaces.Discrete(4)
         self.board_size = GLOBAL_CONFIG.get("board_size")
 
         self.green_apple_reward = GLOBAL_CONFIG.get("reward_green_apple")
-        self.red_apple_reward   = GLOBAL_CONFIG.get("reward_red_apple")
-        self.death_reward       = GLOBAL_CONFIG.get("reward_death")
-        self.step_reward        = GLOBAL_CONFIG.get("reward_step")
-
+        self.red_apple_reward = GLOBAL_CONFIG.get("reward_red_apple")
+        self.death_reward = GLOBAL_CONFIG.get("reward_death")
+        self.step_reward = GLOBAL_CONFIG.get("reward_step")
 
         self.observation_space = spaces.Box(
             low=0.0,
@@ -46,7 +42,7 @@ class GymnasiumWrapper(gym.Env):
         self.board.reset_game()
         self.physics.reset_board_size()
         self.reset_training_progress()
-        
+
         self.episode_steps = 0
         self.max_episode_steps = max(1_000, self.board_size * self.board_size)
 
@@ -57,13 +53,17 @@ class GymnasiumWrapper(gym.Env):
         Reset exploration tracking for a new episode
         or after successfully collecting a green apple.
         """
-        self.visited_positions = { self.board.head_index }
+        self.visited_positions = {self.board.head_index}
         self.steps_without_progress = 0
 
         self.seen_green_since_last_apple = False
         self.best_clear_green_proximity = 0.0
 
-    def update_training_progress(self, vision_vector: np.ndarray, ate_green_apple: bool) -> tuple[bool, bool]:
+    def update_training_progress(
+        self,
+        vision_vector: np.ndarray,
+        ate_green_apple: bool
+    ) -> tuple[bool, bool]:
         """
         Track genuine exploration and visible-apple progress.
 
@@ -76,19 +76,30 @@ class GymnasiumWrapper(gym.Env):
             return False, False
 
         position = self.board.head_index
-        
+
         is_new_position = position not in self.visited_positions
         self.visited_positions.add(position)
 
-        can_see_green_apple = any(vision_vector[3 + i * 8] > 0 for i in range(4))
+        can_see_green_apple = any(
+            vision_vector[3 + i * 8] > 0
+            for i in range(4)
+        )
         clear_green_proximity = max(vision_vector[6 + i * 8] for i in range(4))
-        discovered_green = can_see_green_apple and not self.seen_green_since_last_apple
+        discovered_green = (
+            can_see_green_apple
+            and not self.seen_green_since_last_apple
+        )
 
         if can_see_green_apple:
             self.seen_green_since_last_apple = True
 
-        approaching_green = clear_green_proximity > self.best_clear_green_proximity + 1e-6
-        self.best_clear_green_proximity = max(self.best_clear_green_proximity, clear_green_proximity)
+        approaching_green = (
+            clear_green_proximity > self.best_clear_green_proximity + 1e-6
+        )
+        self.best_clear_green_proximity = max(
+            self.best_clear_green_proximity,
+            clear_green_proximity
+        )
 
         if (is_new_position or discovered_green or approaching_green):
             self.steps_without_progress = 0
@@ -97,7 +108,11 @@ class GymnasiumWrapper(gym.Env):
 
         return is_new_position, can_see_green_apple
 
-    def get_exploration_reward(self, is_new_position: bool, can_see_green_apple: bool) -> float:
+    def get_exploration_reward(
+        self,
+        is_new_position: bool,
+        can_see_green_apple: bool
+    ) -> float:
         """
         Encourage visiting new cells when no green apple
         is visible.
@@ -116,9 +131,17 @@ class GymnasiumWrapper(gym.Env):
         This is not a Snake death condition.
         """
         timeout_limit = max(100, int(self.board_size * 3))
-        return self.steps_without_progress >= timeout_limit or self.episode_steps >= self.max_episode_steps
+        return (
+            self.steps_without_progress >= timeout_limit
+            or self.episode_steps >= self.max_episode_steps
+        )
 
-    def calculate_reward(self, is_dead: bool, ate_red_apple: bool, ate_green_apple: bool) -> float:
+    def calculate_reward(
+        self,
+        is_dead: bool,
+        ate_red_apple: bool,
+        ate_green_apple: bool
+    ) -> float:
         """Calculate normal game rewards without starvation."""
         reward = self.step_reward
 
@@ -133,7 +156,11 @@ class GymnasiumWrapper(gym.Env):
 
         return reward
 
-    def step(self, action: Action, training: bool = False) -> tuple[np.ndarray, float, bool, bool]:
+    def step(
+        self,
+        action: Action,
+        training: bool = False
+    ) -> tuple[np.ndarray, float, bool, bool]:
         """
         Execute a Snake movement.
 
@@ -147,8 +174,14 @@ class GymnasiumWrapper(gym.Env):
             Training-only truncation; not treated as death.
         """
         self.episode_steps += 1
-        next_index = self.physics.get_next_position(self.board.head_index, action)
-        is_dead = self.physics.check_wall_body_collision(next_index, self.board.get_board_array())
+        next_index = self.physics.get_next_position(
+            self.board.head_index,
+            action
+        )
+        is_dead = self.physics.check_wall_body_collision(
+            next_index,
+            self.board.get_board_array()
+        )
 
         ate_red_apple = False
         ate_green_apple = False

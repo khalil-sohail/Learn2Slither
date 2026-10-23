@@ -1,10 +1,12 @@
 from enum import IntEnum
 
+
 class Action(IntEnum):
     UP = 0
     DOWN = 1
     LEFT = 2
     RIGHT = 3
+
 
 class Entity(IntEnum):
     SNAKE_HEAD_UP = 0
@@ -23,6 +25,7 @@ class Entity(IntEnum):
     LOBBY_BACKGROUND = 13
     GAME_BACKGROUND = 14
 
+
 class AppState(IntEnum):
     LOBBY = 0
     CONFIG = 1
@@ -33,4 +36,3 @@ class AppState(IntEnum):
     AGENT_PLAYING_EX = 6
     AGENT_PLAYING_EI = 7
     EXIT = 8
-

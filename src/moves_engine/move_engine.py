@@ -1,29 +1,15 @@
-# this is the main file for the moves engine.
-# every move will be calculated and returned by this engine. that will update the board state.
-# it will also be used to calculate the next state of the board after a move is made.
-
-# the only possible moves are:
-# 0 - move up
-# 1 - move down
-# 2 - move left
-# 3 - move right
-
-# MovesEngine engine will have two modes, the first mode is the training mode, where the moves will be calculated by the neural network.
-# the second mode is the playing mode, where the moves will be calculated by the user input
-
-# all moves will be validated before being applied to the board state, and if the move is invalid, the game will end.
-# all moves will be recived from the Gymnasium environment, and the moves will be applied to the board state, and the board state will be updated accordingly.
-
-from collections import deque
-from app_config.config import GLOBAL_CONFIG
-from constants import Action, Entity
+from app_config import GLOBAL_CONFIG
+from constants import Action,  Entity
 
 import numpy as np
 
+
 class MovesEngine:
     """
-    The MovesEngine class is responsible for calculating and validating moves in the game.
-    it will update the board state based on the moves made by the agent or user input.
+    The MovesEngine class is responsible for handling the movement
+        logic of the snake in the game.
+    It calculates the next position of the snake's head based on the current
+        action and checks for collisions with walls or the snake's own body.
     """
     def __init__(self):
         """
@@ -31,7 +17,7 @@ class MovesEngine:
         :param size: The size of the board (number of cells in one dimension).
         """
         self.board_size = GLOBAL_CONFIG.get("board_size")
-    
+
     def reset_board_size(self):
         """
         Resets the board size from the GLOBAL_CONFIG.
@@ -41,9 +27,15 @@ class MovesEngine:
 
     def get_next_position(self, head_index, action):
         """
-        Returns the hypothetical next integer index based on Up/Down/Left/Right action.
+        Returns the hypothetical next integer index based on:
+            Up - Down - Left - Right actions.
         :param head_index: The current index of the snake's head.
-        :param action: The action to be taken (Action.UP: Up, Action.DOWN: Down, Action.LEFT: Left, Action.RIGHT: Right).
+        :param action: The action to be taken (
+            Action.UP: Up,
+            Action.DOWN: Down,
+            Action.LEFT: Left,
+            Action.RIGHT: Right
+        ).
         :return: The next index after applying the action.
         """
         row = head_index // self.board_size
@@ -60,7 +52,11 @@ class MovesEngine:
 
         return row * self.board_size + col
 
-    def check_wall_body_collision(self, next_index: int, board_array: np.ndarray):
+    def check_wall_body_collision(
+        self,
+        next_index: int,
+        board_array: np.ndarray
+    ) -> bool:
         """
         Checks if the next_index collides with the wall or the snake's body.
         :param next_index: The index to check for collision.
@@ -74,4 +70,3 @@ class MovesEngine:
         if destination_value in [Entity.WALL, Entity.SNAKE_BODY]:
             return True
         return False
-

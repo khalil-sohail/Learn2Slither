@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+
 @dataclass(slots=True, frozen=True)
 class Transition:
     state: np.ndarray
@@ -10,6 +11,7 @@ class Transition:
     next_state: np.ndarray
     reward: float
     done: bool
+
 
 class ReplayBuffer(Sequence[Transition]):
     def __init__(self, capacity: int):

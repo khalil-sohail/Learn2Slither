@@ -1,5 +1,5 @@
 from collections import deque
-from app_config.config import GLOBAL_CONFIG
+from app_config import GLOBAL_CONFIG
 from constants import Entity
 
 import numpy as np
@@ -18,6 +18,7 @@ VISION_BODY_ENTITIES = frozenset({
     Entity.SNAKE_TAIL_LEFT,
     Entity.SNAKE_TAIL_RIGHT,
 })
+
 
 class BoardState:
     """"""
@@ -75,7 +76,10 @@ class BoardState:
             tail_row = head_row - 2 * dr
             tail_col = head_col - 2 * dc
 
-            if (1 <= tail_row < self.board_size - 1 and 1 <= tail_col < self.board_size - 1):
+            if (
+                1 <= tail_row < self.board_size - 1
+                and 1 <= tail_col < self.board_size - 1
+            ):
                 break
 
         tail_index = tail_row * self.board_size + tail_col
@@ -85,10 +89,13 @@ class BoardState:
         self.body.extend([tail_index, middle_index, head_index])
         self.head_index = head_index
 
-
-        self.board[head_index] = self.get_head_direction(middle_index, head_index)
+        self.board[head_index] = (
+            self.get_head_direction(middle_index, head_index)
+        )
         self.board[middle_index] = Entity.SNAKE_BODY
-        self.board[tail_index] = self.get_tail_direction(tail_index, middle_index)
+        self.board[tail_index] = (
+            self.get_tail_direction(tail_index, middle_index)
+        )
 
         self.spawn_apple(Entity.RED_APPLE)
         self.spawn_apple(Entity.GREEN_APPLE)
@@ -98,7 +105,7 @@ class BoardState:
         """
         Move the snake to a legal destination.
         Returns the entity consumed at next_index.
-        Assumes wall and body collisions have already been checked by the caller.
+        wall and body collisions have already been checked by the caller.
         """
         if not self.body:
             raise RuntimeError("Cannot move a dead snake.")
@@ -107,7 +114,9 @@ class BoardState:
         self.board[self.body[-1]] = Entity.SNAKE_BODY
 
         self.body.append(next_index)
-        self.board[next_index] = self.get_head_direction(self.head_index, next_index)
+        self.board[next_index] = (
+            self.get_head_direction(self.head_index, next_index)
+        )
 
         tail_moves = 1
         apple = Entity.EMPTY
@@ -137,14 +146,16 @@ class BoardState:
             return ate_apple
 
         if len(self.body) >= 2:
-            self.board[self.body[0]] = self.get_tail_direction(self.body[0], self.body[1])
+            self.board[self.body[0]] = self.get_tail_direction(
+                self.body[0],
+                self.body[1]
+            )
 
         if apple != Entity.EMPTY:
             self.pending_apples.append(apple)
 
         self.respawn_pending_apples()
         return ate_apple
-
 
     def spawn_apple(self, color: Entity) -> bool:
         empty_indices = np.flatnonzero(self.board == Entity.EMPTY)
@@ -171,7 +182,7 @@ class BoardState:
                 remaining.append(apple)
 
         self.pending_apples = remaining
-        
+
     def get_board_array(self):
         """
         Returns a copy of the current board state as a 1D NumPy array."""
@@ -191,7 +202,7 @@ class BoardState:
 
     def get_tail_direction(self, front_index: int, behind_index: int):
         difference = front_index - behind_index
-        
+
         if difference == -self.board_size:
             return Entity.SNAKE_TAIL_UP
         elif difference == self.board_size:
@@ -200,12 +211,12 @@ class BoardState:
             return Entity.SNAKE_TAIL_LEFT
         elif difference == 1:
             return Entity.SNAKE_TAIL_RIGHT
-            
+
         return Entity.SNAKE_TAIL_LEFT
 
     def get_head_direction(self, front_index: int, behind_index: int):
         difference = front_index - behind_index
-        
+
         if difference == self.board_size:
             return Entity.SNAKE_HEAD_UP
         elif difference == -self.board_size:
@@ -214,7 +225,7 @@ class BoardState:
             return Entity.SNAKE_HEAD_LEFT
         elif difference == -1:
             return Entity.SNAKE_HEAD_RIGHT
-            
+
         return Entity.SNAKE_HEAD_LEFT
 
     def vision_symbol(self, cell) -> str:
@@ -229,7 +240,13 @@ class BoardState:
             return "R"
         return "0"
 
-    def scan_vision_ray(self, head_row: int, head_col: int, dr: int, dc: int) -> list[str]:
+    def scan_vision_ray(
+        self,
+        head_row: int,
+        head_col: int,
+        dr: int,
+        dc: int
+    ) -> list[str]:
         """Scan one direction from the head until a wall is reached."""
         row, col = head_row, head_col
         ray = []
@@ -266,11 +283,19 @@ class BoardState:
             for dr, dc in VISION_DIRECTIONS
         ]
 
-    def normalize_vision_distance(self, distance: int, dimension: int) -> float:
+    def normalize_vision_distance(
+        self,
+        distance: int,
+        dimension: int
+    ) -> float:
         """Normalize distance: closer = higher, absent = 0."""
         return 1.0 - (distance - 1) / (dimension - 1)
 
-    def get_ray_distance_features(self, ray: list[str], dimension: int) -> list[float]:
+    def get_ray_distance_features(
+        self,
+        ray: list[str],
+        dimension: int
+    ) -> list[float]:
         """
         Return five normalized distances:
           [0] Wall
@@ -320,8 +345,11 @@ class BoardState:
 
         return free_cells / max(1, dimension - 3)
 
-
-    def get_clear_green_proximity(self, ray: list[str], dimension: int) -> float:
+    def get_clear_green_proximity(
+        self,
+        ray: list[str],
+        dimension: int
+    ) -> float:
         """
         Return the normalized proximity of the first green apple
         reachable along the straight ray without crossing a body.
@@ -339,7 +367,10 @@ class BoardState:
 
         return 0.0
 
-    def get_vision_density_features(self, rays: list[list[str]]) -> list[float]:
+    def get_vision_density_features(
+        self,
+        rays: list[list[str]]
+    ) -> list[float]:
         """Return the visible body density for each direction."""
         return [
             ray.count("S") / len(ray)
@@ -420,50 +451,3 @@ class BoardState:
 
         assert len(features) == 33
         return np.asarray(features, dtype=np.float32)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

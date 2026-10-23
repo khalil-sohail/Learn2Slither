@@ -1,5 +1,4 @@
 import random
-import numpy as np
 
 from app_config.config import GLOBAL_CONFIG
 
@@ -29,15 +28,23 @@ PHASE_WEIGHTS = [
     [0.12, 0.07, 0.06, 0.05, 0.04, 0.03, 0.03, 0.03, 0.02, 0.55],
 ]
 
-def sample_board_size(bucket_steps: list[int], balancing_steps: int) -> tuple[int, int, bool] | None:
+
+def sample_board_size(
+    bucket_steps: list[int],
+    balancing_steps: int
+) -> tuple[int, int, bool] | None:
     """
     Samples a board size based on the current bucket steps and balancing steps.
-    
-    equations:
-    balance_interval = minimum // 4
-    balance_until = (i - 1) * balance_interval + (minimum // 2 if i == count - 1 else balance_interval)
-    balancing phase weights = 1.0 / (j + 1) ** alpha if j <= i else 0.0 for j in range(count)
-                    where alpha is a hyperparameter that controls the steepness of the decay.
+
+    Args:
+        bucket_steps:
+            The number of steps taken in each bucket.
+        balancing_steps:
+            The number of steps taken in the current balancing phase.
+
+    Returns:
+        A tuple containing the selected bucket index, the selected board size,
+        and a boolean indicating whether the balancing phase is active.
     """
     minimum = GLOBAL_CONFIG.get("end_total_steps")
     balance_interval = max(1, minimum // 4)
@@ -79,4 +86,3 @@ def sample_board_size(bucket_steps: list[int], balancing_steps: int) -> tuple[in
 
     board = random.choice(BOARD_BUCKETS[bucket])
     return bucket, board, (balance_until is not None)
-
