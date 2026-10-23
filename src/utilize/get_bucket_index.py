@@ -4,16 +4,29 @@ import numpy as np
 from app_config.config import GLOBAL_CONFIG
 
 BOARD_BUCKETS = [
-    # [5, 10, 15, 20], [25, 30, 35, 40], [45, 50, 55, 60], [65, 70, 75, 80], [85, 90, 95, 100]
-    [5, 8, 10, 13], [15, 18, 20, 23], [25, 28, 30, 33], [35, 38, 40, 43], [50, 60, 70, 80]
+    [5, 10],
+    [15, 20],
+    [25, 30],
+    [35, 40],
+    [45, 50],
+    [55, 60],
+    [65, 70],
+    [75, 80],
+    [85, 90],
+    [95, 100],
 ]
 
 PHASE_WEIGHTS = [
-    [1.00, 0.00, 0.00, 0.00, 0.00],
-    [0.30, 0.70, 0.00, 0.00, 0.00],
-    [0.15, 0.15, 0.70, 0.00, 0.00],
-    [0.10, 0.10, 0.10, 0.70, 0.00],
-    [0.07, 0.07, 0.07, 0.07, 0.72]
+    [1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+    [0.35, 0.65, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+    [0.30, 0.10, 0.60, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+    [0.25, 0.12, 0.08, 0.55, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+    [0.22, 0.10, 0.08, 0.05, 0.55, 0.00, 0.00, 0.00, 0.00, 0.00],
+    [0.16, 0.10, 0.08, 0.06, 0.05, 0.55, 0.00, 0.00, 0.00, 0.00],
+    [0.15, 0.09, 0.07, 0.05, 0.05, 0.04, 0.55, 0.00, 0.00, 0.00],
+    [0.14, 0.08, 0.06, 0.05, 0.04, 0.04, 0.04, 0.55, 0.00, 0.00],
+    [0.13, 0.07, 0.06, 0.05, 0.04, 0.04, 0.03, 0.03, 0.55, 0.00],
+    [0.12, 0.07, 0.06, 0.05, 0.04, 0.03, 0.03, 0.03, 0.02, 0.55],
 ]
 
 def sample_board_size(bucket_steps: list[int], balancing_steps: int) -> tuple[int, int, bool] | None:
@@ -22,7 +35,7 @@ def sample_board_size(bucket_steps: list[int], balancing_steps: int) -> tuple[in
     
     equations:
     balance_interval = minimum // 4
-    balance_until = (i - 1) * balance_interval + (minimum * 2 if i == count - 1 else balance_interval)
+    balance_until = (i - 1) * balance_interval + (minimum // 2 if i == count - 1 else balance_interval)
     balancing phase weights = 1.0 / (j + 1) ** alpha if j <= i else 0.0 for j in range(count)
                     where alpha is a hyperparameter that controls the steepness of the decay.
     """
@@ -44,7 +57,7 @@ def sample_board_size(bucket_steps: list[int], balancing_steps: int) -> tuple[in
 
         balance_until = (
             (i - 1) * balance_interval
-            + (minimum * 1.5 if i == count - 1 else balance_interval)
+            + ((minimum // 2) if i == count - 1 else balance_interval)
         )
 
         if balancing_steps < balance_until:

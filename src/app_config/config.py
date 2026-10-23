@@ -8,32 +8,32 @@ class Config:
     """
     def __init__(self):
         # Environment Rules
-        self.board_size = 10
-        self.fps_cap = 15
-        self.reward_green_apple = 1.0
-        self.reward_red_apple = -1.0
-        self.reward_death = -5.0
-        self.reward_step = -0.01
-        self.reward_timeout = -10.0
+        self.board_size         = 10
+        self.fps_cap            = 15
+
+        self.reward_green_apple = +5.00
+        self.reward_red_apple   = -1.00
+        self.reward_death       = -10.0
+        self.reward_step        = -0.02
         
         # DQN Hyperparameters
-        self.gamma = 0.99
         self.target_weights = None
-        self.new_weights = None
+        self.new_weights    = None
 
         # training parameters
-        self.learning_rate = 0.0001
-        self.end_total_steps = 50_000
-        self.batch_size = 64
-        self.train_every = 10
-        self.target_update_every = 1_000
-        self.checkpoint_every = 2_000_000
+        self.learning_rate          = 0.0001
+        self.gamma                  = 0.995
+        self.end_total_steps        = 5_000 #100_000
+        self.batch_size             = 64
+        self.train_every            = 10
+        self.target_update_every    = 1_000
+        self.checkpoint_every       = 2_000_000
+        # self.save_interval          = 100_000
         
         self.evaluate_model = 50
         
         # Application & File I/O State
         self.mode = "LOBBY"
-        self.save_interval = 200_000
 
         # general configuration
         self.print_vision = False
@@ -46,7 +46,6 @@ class Config:
             "reward_red_apple": float,
             "reward_death": float,
             "reward_step": float,
-            "reward_timeout": float,
             "learning_rate": float,
             "gamma": float,
             "target_weights": type(None),
@@ -64,10 +63,10 @@ class Config:
         self._expected_input = {
             "board_size": {
                 "min": 5,
-                "max": 100
+                "max": 500
             },
             "fps_cap": {
-                "min": 1,
+                "min": 5,
                 "max": 1000
             },
             "reward_green_apple": {
@@ -85,10 +84,6 @@ class Config:
             "reward_step": {
                 "min": -1.0,
                 "max": 1.0
-            },
-            "reward_timeout": {
-                "min": -10.0,
-                "max": 10.0
             },
             "learning_rate": {
                 "min": 0.0001,
@@ -136,7 +131,8 @@ class Config:
                     "TRAIN",
                     "HUMAN_PLAYING",
                     "WATCH_TRAIN",
-                    "AGENT_PLAYING",
+                    "AGENT_PLAYING_EX",
+                    "AGENT_PLAYING_EI",
                     "EXIT"
                 ]
             },

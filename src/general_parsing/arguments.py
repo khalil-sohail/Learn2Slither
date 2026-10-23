@@ -18,7 +18,7 @@ def checkMode(mode):
     :return: The validated mode if it's allowed.
     :raises ValueError: If the mode is not allowed.
     """
-    valid_modes = ["LOBBY", "CONFIG", "EVALUATE", "TRAIN", "HUMAN_PLAYING", "WATCH_TRAIN", "AGENT_PLAYING", "EXIT"]
+    valid_modes = ["LOBBY", "CONFIG", "EVALUATE", "TRAIN", "HUMAN_PLAYING", "WATCH_TRAIN", "AGENT_PLAYING_EX", "AGENT_PLAYING_EI", "EXIT"]
     if mode not in valid_modes:
         raise ValueError(f"Invalid mode: {mode}. Valid modes are: {valid_modes}")
     return mode
@@ -31,11 +31,11 @@ def parseArguments(argv) -> bool:
     arg_map: dict[str, tuple] = {
         "-m": (
             ("mode", checkMode),
-            "Expected Modes: LOBBY, CONFIG, EVALUATE, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"
+            "Expected Modes: LOBBY, CONFIG, EVALUATE, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING_EX, AGENT_PLAYING_EI, EXIT"
         ),
         "--mode": (
             ("mode", checkMode),
-            "Expected Modes: LOBBY, CONFIG, EVALUATE, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING, EXIT"
+            "Expected Modes: LOBBY, CONFIG, EVALUATE, TRAIN, HUMAN_PLAYING, WATCH_TRAIN, AGENT_PLAYING_EX, AGENT_PLAYING_EI, EXIT"
         ),
         "-eval": (
             ("evaluate_model", int),
@@ -109,10 +109,6 @@ def parseArguments(argv) -> bool:
             ("reward_step", float),
             "Expected Reward for Each Step: float"
         ),
-        "--reward-timeout": (
-            ("reward_timeout", float),
-            "Expected Reward for Timeout: float"
-        ),
         
         # File I/O Flags
         "--weights": (
@@ -142,7 +138,7 @@ def parseArguments(argv) -> bool:
             print("Help requested. Displaying help information...")
             print("Usage: python main.py [options]")
             print("Environment Options:")
-            print("  -m, --mode        Mode ('LOBBY', 'CONFIG', 'EVALUATE', 'TRAIN', 'HUMAN_PLAYING', 'WATCH_TRAIN', 'AGENT_PLAYING', 'EXIT')")
+            print("  -m, --mode        Mode ('LOBBY', 'CONFIG', 'EVALUATE', 'TRAIN', 'HUMAN_PLAYING', 'WATCH_TRAIN', 'AGENT_PLAYING_EX', 'AGENT_PLAYING_EI', 'EXIT')")
             print("  -eval             Number of games per board for evaluation (default: 50)")
             print("  -b, --board       Board size (e.g., 10, 20)")
             print("  -f, --fps         Frames per second limit")

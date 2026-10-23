@@ -30,12 +30,12 @@ def get_input(current_action: Action, APP_STATE: AppState) -> tuple[Action, AppS
                 current_action = Action.RIGHT
 
         if event.type == pygame.KEYDOWN:
+            fps = GLOBAL_CONFIG.get("fps_cap")
             if event.key in (pygame.K_PLUS, pygame.K_KP_PLUS, pygame.K_p):
-                fps = min(GLOBAL_CONFIG.get("fps_cap") + 5, 1000)
-                GLOBAL_CONFIG.update('fps_cap', fps)
+                fps = min(fps + 5, 1000)
             elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS, pygame.K_m):
-                fps = max(GLOBAL_CONFIG.get("fps_cap") - 5, 1000)
-                GLOBAL_CONFIG.update('fps_cap', fps)
+                fps = max(fps - 5, 5)
+            GLOBAL_CONFIG.update('fps_cap', fps)
 
     return current_action, APP_STATE
 
@@ -76,7 +76,7 @@ def game_loop(gfx: GraphicsEngine, env: GymnasiumWrapper, agent: DQNAgent, curre
             elif action is Action.RIGHT:
                 print("RIGHT")
 
-        next_snake_vision, reward, is_dead = env.step(action)
+        next_snake_vision, reward, is_dead, _ = env.step(action)
         if current_state == AppState.WATCH_TRAIN:
             agent.remember(0, snake_vision, action, next_snake_vision, reward, is_dead)
             agent.train_step(batch_size=GLOBAL_CONFIG.get("batch_size"))
@@ -113,16 +113,16 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
     snake_vision = env.reset(board_size=board_size)
     episode = agent.last_episode
     
-    print_every = 10_000
-    printing = False
+    print_every = 200_000
+    printing = True
 
     target_update_every = GLOBAL_CONFIG.get("target_update_every")
-    checkpoint_every = GLOBAL_CONFIG.get("checkpoint_every")
+    # checkpoint_every = GLOBAL_CONFIG.get("checkpoint_every")
     train_every = GLOBAL_CONFIG.get("train_every")
     batch_size = GLOBAL_CONFIG.get("batch_size")
 
     debug = ""
-    save_now = False
+    # save_now = False
     while True:
         agent.env_steps += 1
 
@@ -134,7 +134,7 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
             )
         )
 
-        next_state, reward, is_dead = env.step(action)
+        next_state, reward, is_dead, stop_training = env.step(action, training=True)
         agent.remember(
             bucket_index,
             snake_vision,
@@ -151,8 +151,8 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
                 if agent.total_steps % target_update_every == 0:
                     agent.update_target_network()
 
-        if agent.env_steps % checkpoint_every == 0:
-            save_now = True
+        # if agent.env_steps % checkpoint_every == 0:
+        #     save_now = True
 
         if agent.env_steps % print_every == 0 and printing:
             debug += (
@@ -162,23 +162,24 @@ def train_game_loop(env: GymnasiumWrapper, eval_env: GymnasiumWrapper, agent: DQ
                 f"Balancing Steps: {agent.balancing_steps}, "
                 f"Memory Size: ({', '.join(str(len(bucket)) for bucket in agent.memory)}), "
                 f"Loss: "
-                f"{agent.losses[-1]:.6f}\n\n" if agent.losses else "None\n\n"
+                f"{agent.losses[-1]:.6f}\n" if agent.losses else "None\n"
             )
+            debug += agent.get_training_distribution()
 
-            debug += agent.evaluate(eval_env, games_per_board=10)
+            debug += agent.evaluate(eval_env, games_per_board=10, save_checkpoint=True)
             print(debug)
             debug = ""
 
-        if not is_dead:
+        if not (is_dead or stop_training):
             snake_vision = next_state
             continue
 
         episode += 1
         agent.last_episode = episode
 
-        if save_now:
-            agent.save_model(f"models/checkpoint_{agent.last_episode}.pth")
-            save_now = False
+        # if save_now:
+        #     agent.save_model(f"models/checkpoint_{agent.last_episode}.pth")
+        #     save_now = False
 
         board_stats = sample_board_size(agent.bucket_steps, agent.balancing_steps)
         if board_stats is None:
@@ -227,7 +228,7 @@ def main(argv):
         print(f"Error: {e}")
         return
 
-    window_size = 1000
+    window_size = 1500
     current_state: AppState = AppState[GLOBAL_CONFIG.get("mode")]
     try:
         gfx = None
