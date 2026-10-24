@@ -216,4 +216,14 @@ class GymnasiumWrapper:
 
             stop_training = self.should_stop_training()
 
+        if GLOBAL_CONFIG.get("print_vision"):
+            if action is Action.UP:
+                print("UP")
+            elif action is Action.DOWN:
+                print("DOWN")
+            elif action is Action.LEFT:
+                print("LEFT")
+            elif action is Action.RIGHT:
+                print("RIGHT")
+
         return vision_vector, reward, is_dead, stop_training

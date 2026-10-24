@@ -572,7 +572,7 @@ class GraphicsEngine:
             align="center"
         )
 
-        col_width = 1000
+        col_width = 600
         btn_height = 40
         padding = 10
         start_y = self.window_size // 4
@@ -835,6 +835,12 @@ class GraphicsEngine:
             center=True
         )
         return is_hovered
+
+    def wait_for_step(self):
+        """
+        Pauses the game loop until the user presses the spacebar.
+        """
+        ...
 
     def close(self):
         """

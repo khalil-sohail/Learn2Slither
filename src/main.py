@@ -15,13 +15,18 @@ import sys
 def get_input(
     current_action: Action,
     APP_STATE: AppState
-) -> tuple[Action, AppState]:
+) -> tuple[Action, AppState, bool]:
+    step_requested = False
+
     for event in pygame.event.get():
         if (
             event.type == pygame.QUIT or
             (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)
         ):
-            return current_action, AppState.EXIT
+            return current_action, AppState.EXIT, step_requested
+
+        if (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE):
+            step_requested = True
 
         if (
             APP_STATE == AppState.HUMAN_PLAYING
@@ -38,22 +43,16 @@ def get_input(
 
         if event.type == pygame.KEYDOWN:
             fps = GLOBAL_CONFIG.get("fps_cap")
+            new_fps = fps
             if event.key in (pygame.K_PLUS, pygame.K_KP_PLUS, pygame.K_p):
-                fps = min(fps + 5, 1000)
+                new_fps = min(fps + 5, 1000)
             elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS, pygame.K_m):
-                fps = max(fps - 5, 5)
-            GLOBAL_CONFIG.update('fps_cap', fps)
+                new_fps = max(fps - 5, 0)
 
-    return current_action, APP_STATE
+            if new_fps != fps:
+                GLOBAL_CONFIG.update('fps_cap', new_fps)
 
-
-def get_curriculum_progress(agent: DQNAgent) -> float:
-    completed_steps = (
-        sum(min(steps, agent.end_total_steps)
-            for steps in agent.bucket_steps)
-    )
-
-    return completed_steps / (len(agent.bucket_steps) * agent.end_total_steps)
+    return current_action, APP_STATE, step_requested
 
 
 def game_loop(
@@ -81,12 +80,16 @@ def game_loop(
         AppState.AGENT_PLAYING_EX,
         AppState.AGENT_PLAYING_EI
     ]:
-        action, current_state = get_input(
+        action, current_state, step_requested = get_input(
             current_action=action,
             APP_STATE=current_state
         )
         if current_state == AppState.EXIT:
             break
+
+        if GLOBAL_CONFIG.get("fps_cap") == 0 and not step_requested:
+            gfx.clock.tick(10)
+            continue
 
         if current_state == AppState.WATCH_TRAIN:
             action = agent.get_action(snake_vision, explore_mode=True)
@@ -98,16 +101,6 @@ def game_loop(
                 snake_vision,
                 explore_mode=(current_state == AppState.AGENT_PLAYING_EX)
             )
-
-        if GLOBAL_CONFIG.get("print_vision"):
-            if action is Action.UP:
-                print("UP")
-            elif action is Action.DOWN:
-                print("DOWN")
-            elif action is Action.LEFT:
-                print("LEFT")
-            elif action is Action.RIGHT:
-                print("RIGHT")
 
         next_snake_vision, reward, is_dead, _ = env.step(action)
         if current_state == AppState.WATCH_TRAIN:
@@ -139,7 +132,7 @@ def game_loop(
                 red_apple_eaten
             )
 
-        snake_vision = env.board.get_snake_vision_vector()
+        snake_vision = next_snake_vision
 
     return AppState.LOBBY
 
@@ -268,7 +261,7 @@ def train_game_loop(
             agent.session_episodes_completed += 1
             if (
                 save_weights
-                and session in (1, 10, 100, 1000, 10_000, 100_000)
+                and session in (1, 10, 100)
             ):
                 agent.save_model(
                     str(output_dir / f"snake_sessions_{session}.pth")
@@ -339,7 +332,7 @@ def main(argv):
         print(f"Error: {e}")
         return
 
-    window_size = 1500
+    window_size = 1000
     current_state: AppState = AppState[GLOBAL_CONFIG.get("mode")]
     try:
         gfx = None
