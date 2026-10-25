@@ -71,7 +71,7 @@ def game_loop(
     Returns:
         Updated application state after the game loop.
     """
-    snake_vision = env.reset(GLOBAL_CONFIG.get("board_size"))
+    env.reset(GLOBAL_CONFIG.get("board_size"))
     action: Action = Action.RIGHT
 
     while current_state in [
@@ -91,6 +91,7 @@ def game_loop(
             gfx.clock.tick(10)
             continue
 
+        snake_vision = env.board.get_snake_vision_vector(action)
         if current_state == AppState.WATCH_TRAIN:
             action = agent.get_action(snake_vision, explore_mode=True)
         elif current_state in [
@@ -157,8 +158,8 @@ def one_session_train(
 
     An episode ends on genuine death or training truncation.
     """
-    snake_vision = env.reset(board_size=board_size)
-
+    env.reset(board_size=board_size)
+    snake_vision = env.board.get_snake_vision_vector()
     target_update_every = GLOBAL_CONFIG.get("target_update_every")
     train_every = GLOBAL_CONFIG.get("train_every")
     batch_size = GLOBAL_CONFIG.get("batch_size")
@@ -259,13 +260,13 @@ def train_game_loop(
             agent.last_episode += 1
             completed_sessions += 1
             agent.session_episodes_completed += 1
-            if (
-                save_weights
-                and session in (1, 10, 100)
-            ):
-                agent.save_model(
-                    str(output_dir / f"snake_sessions_{session}.pth")
-                )
+            # if (
+            #     save_weights
+            #     and session in (1, 10, 100)
+            # ):
+            #     agent.save_model(
+            #         str(output_dir / f"snake_sessions_{session}.pth")
+            #     )
 
         if save_weights:
             final_path = output_dir / "snake_sessions_final.pth"
@@ -310,7 +311,7 @@ def train_game_loop(
             f"Recent Loss Std: {np.std(recent_losses):.6f}"
         )
 
-    print("\nFinal Evaluation:\n")
+    print("\nFinal Evaluation:")
     if training_sessions is not None:
         evaluation = agent.evaluate(
             eval_env,

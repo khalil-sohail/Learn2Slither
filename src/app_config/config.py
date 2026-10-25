@@ -15,7 +15,7 @@ class Config:
         self.reward_green_apple = +5.00
         self.reward_red_apple = -1.00
         self.reward_death = -10.0
-        self.reward_step = -0.02
+        self.reward_step = -0.01
 
         # DQN Hyperparameters
         self.learning_rate = 0.0001

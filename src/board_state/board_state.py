@@ -1,6 +1,6 @@
-from collections import deque
 from app_config import GLOBAL_CONFIG
-from constants import Entity
+from constants import Entity, Action
+from collections import deque
 
 import numpy as np
 
@@ -385,7 +385,11 @@ class BoardState:
         """
         return size / (size + 20.0)
 
-    def print_visible_rays(self, rays: list[list[str]]) -> None:
+    def print_visible_rays(
+        self,
+        rays: list[list[str]],
+        action: Action | None = None
+    ) -> None:
         """Display the four-direction vision in the terminal."""
         north, east, south, west = rays
 
@@ -405,7 +409,20 @@ class BoardState:
 
         print()
 
-    def get_snake_vision_vector(self) -> np.ndarray:
+        if GLOBAL_CONFIG.get("print_vision") and action is not None:
+            if action is Action.UP:
+                print("UP")
+            elif action is Action.DOWN:
+                print("DOWN")
+            elif action is Action.LEFT:
+                print("LEFT")
+            elif action is Action.RIGHT:
+                print("RIGHT")
+
+    def get_snake_vision_vector(
+        self,
+        action: Action | None = None
+    ) -> np.ndarray:
         """
         Build a 33-feature observation using only visible cells.
 
@@ -447,7 +464,7 @@ class BoardState:
         features.append(self.normalize_board_size(size))
 
         if self.print_vision:
-            self.print_visible_rays(rays)
+            self.print_visible_rays(rays, action)
 
         assert len(features) == 33
         return np.asarray(features, dtype=np.float32)

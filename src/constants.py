@@ -1,4 +1,8 @@
 from enum import IntEnum
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+IMAGES_DIR = PROJECT_ROOT / "assets" / "images"
 
 
 class Action(IntEnum):

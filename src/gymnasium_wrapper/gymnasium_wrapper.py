@@ -46,8 +46,6 @@ class GymnasiumWrapper:
         self.episode_steps = 0
         self.max_episode_steps = max(1_000, self.board_size * self.board_size)
 
-        return self.board.get_snake_vision_vector()
-
     def reset_training_progress(self):
         """
         Reset exploration tracking for a new episode
@@ -196,7 +194,7 @@ class GymnasiumWrapper:
         if is_dead:
             vision_vector = np.array([0.0] * 33, dtype=np.float32)
         else:
-            vision_vector = self.board.get_snake_vision_vector()
+            vision_vector = self.board.get_snake_vision_vector(action)
 
         reward = self.calculate_reward(is_dead, ate_red_apple, ate_green_apple)
         stop_training = False
@@ -215,15 +213,5 @@ class GymnasiumWrapper:
                 )
 
             stop_training = self.should_stop_training()
-
-        if GLOBAL_CONFIG.get("print_vision"):
-            if action is Action.UP:
-                print("UP")
-            elif action is Action.DOWN:
-                print("DOWN")
-            elif action is Action.LEFT:
-                print("LEFT")
-            elif action is Action.RIGHT:
-                print("RIGHT")
 
         return vision_vector, reward, is_dead, stop_training

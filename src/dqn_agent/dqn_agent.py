@@ -442,7 +442,8 @@ class DQNAgent(nn.Module):
                 max_eval_steps = max(1_000, board_size * board_size)
 
                 for _ in range(games_per_board):
-                    state = env.reset(board_size=board_size)
+                    env.reset(board_size=board_size)
+                    state = env.board.get_snake_vision_vector()
                     max_snake_length = len(env.board.body)
                     ending = "capped"
 

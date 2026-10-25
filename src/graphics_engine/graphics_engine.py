@@ -1,10 +1,9 @@
 import sys
 
-from constants import AppState, Entity
+from constants import AppState, Entity, IMAGES_DIR
 from app_config.config import GLOBAL_CONFIG
 import numpy as np
 import pygame
-import os
 
 
 class GraphicsEngine:
@@ -74,7 +73,7 @@ class GraphicsEngine:
             full_scale: bool = False,
             darken_factor: int = 255
         ) -> pygame.Surface:
-            path = os.path.join("../assets/images/", filename)
+            path = IMAGES_DIR / filename
             try:
                 img = pygame.image.load(path).convert_alpha()
 
