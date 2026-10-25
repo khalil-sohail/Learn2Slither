@@ -118,7 +118,7 @@ class GymnasiumWrapper:
         The bonus remains smaller than the step penalty.
         """
         if is_new_position and not can_see_green_apple:
-            return 0.005
+            return 0.01
 
         return 0.0
 

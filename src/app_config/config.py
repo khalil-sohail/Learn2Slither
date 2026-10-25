@@ -79,8 +79,8 @@ class Config:
                 "max": 10.0
             },
             "reward_death": {
-                "min": -10.0,
-                "max": 10.0
+                "min": -100.0,
+                "max": 100.0
             },
             "reward_step": {
                 "min": -1.0,

@@ -30,7 +30,7 @@ class DQNAgent(nn.Module):
         self.gamma = GLOBAL_CONFIG.get("gamma")
 
         self.bucket_count = len(BOARD_BUCKETS)
-        self.memory_capacity = 200_000
+        self.memory_capacity = 500_000
 
         self.memory = [
             ReplayBuffer(self.memory_capacity)
@@ -119,7 +119,7 @@ class DQNAgent(nn.Module):
                 * (1.0 - progress) ** power
             )
         else:
-            initial = 0.75
+            initial = 1.00
             power = 3.00
             progress = min(
                 1.0,
